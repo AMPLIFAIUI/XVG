@@ -1,0 +1,37 @@
+﻿# Editor/IDE metadata
+/.cursor
+/.cursorignore
+/.cursorrules
+
+# Python virtual envs
+**/.venv/
+
+# Rust build artifacts
+/target/
+**/target/
+
+# Node/Svelte build artifacts
+**/node_modules/
+**/.svelte-kit/
+**/dist/
+**/.vite/
+**/.cache/
+**/.parcel-cache/
+
+# WASM package outputs
+/xvg-wasm/pkg/
+
+# Tauri build outputs
+/src-tauri/target/
+
+# Local rustup toolchains anywhere (prevent huge DLLs/docs)
+**/.rustup/
+
+# Logs and bundles
+*.log
+*.bundle
+*.bundle.lock
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,18 @@
+[workspace]
+members = [
+    "xvg-core",
+    "xvg-cli", 
+    "xvg-py",
+    "xvg-desktop"
+]
+exclude = [
+    "xvg-wasm"
+]
+resolver = "2"
+
+[workspace.package]
+version = "1.0.0"
+edition = "2021"
+authors = ["xvg-team"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/amplifaiui/xvg-tesseract" 

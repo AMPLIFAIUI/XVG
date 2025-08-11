@@ -1,0 +1,38 @@
+[package]
+name = "xvg-core"
+version = "1.0.0"
+edition = "2021"
+authors = ["xvg-team"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/amplifaiui/xvg-tesseract"
+
+[dependencies]
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
+bincode = { version = "1", optional = true }
+anyhow = { version = "1", default-features = false }
+crc32fast = "1.3"
+zstd = { version = "0.13", optional = true }
+
+# GPU Shader Execution dependencies
+wgpu = { version = "0.16", optional = true }
+bytemuck = { version = "1.14", optional = true, features = ["derive"] }
+half = { version = "2.2", optional = true }
+
+# 3D Mesh Generation dependencies
+lyon = { version = "1.0", optional = true }
+
+# WASM support
+wasm-bindgen = { version = "0.2", optional = true }
+js-sys = { version = "0.3", optional = true }
+web-sys = { version = "0.3", features = ["console"], optional = true }
+
+[features]
+default = ["std", "compression"]
+std = ["serde/std", "anyhow/std"]
+alloc = ["serde/alloc"]   # for no_std targets
+serde = ["dep:serde", "dep:bincode", "dep:serde_json"]
+compression = ["dep:zstd"]
+wasm = ["dep:wasm-bindgen", "dep:js-sys", "dep:web-sys", "serde"]
+gpu = ["dep:wgpu", "dep:bytemuck", "dep:half"]
+3d = ["dep:lyon"] 
