@@ -72,6 +72,10 @@ cargo build --all-features
 cargo run --bin test_engines
 ```
 
+### Set up .xvg for windows to recognise it.
+
+Run: register_xvg.bat
+
 ### Run Editor
 
 Option 1: PowerShell Script (Recommended)
@@ -110,6 +114,8 @@ cd xvg-core
 cargo test --all-features
 cargo run --bin test_engines
 ```
+
+
 
 Test Results: All 5 engine tests pass
 
