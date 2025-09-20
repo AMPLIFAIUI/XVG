@@ -1,36 +1,37 @@
-# XVG 1.0 Tesseract Installation Guide
-
-This repository is a Rust workspace with CLI, desktop, WASM, web, and Python bindings.
+# XVG Installation Guide
 
 ## Prerequisites
-- Rust (stable)
-- Node.js (for web/desktop UI)
-- wasm-pack (for WASM)
-- Python 3.8+ (optional, for `xvg-py`)
 
-## Build Everything
-```
-# From repo root
+- Rust (latest stable)
+- Python 3.8+ (for Python bindings)
+- wasm-pack (for WebAssembly builds)
+
+## Quick Start
+
+### Build All Components
+```bash
 cargo build --workspace
 ```
 
-## Run
-```
-# CLI
-cargo run -p xvg-cli --release -- --help
-
-# Desktop
-cargo run -p xvg-desktop
-
-# Web (CRA app)
-cd xvg-web
-npm install
-npm start
+### Run CLI Tools
+```bash
+cargo run -p xvg-cli -- --help
 ```
 
-## WASM Usage
-See `xvg-wasm/pkg/` after building, and import from the generated JS.
+### Test Core Library
+```bash
+cargo test -p xvg-core
+```
 
-## Notes
-- Build artifacts go to `./target` by default. You may set `CARGO_TARGET_DIR` if desired.
+## Components
+
+- **xvg-core**: Core XVG engine library (complete)
+- **xvg-cli**: Command-line tools
+- **xvg-py**: Python bindings
+- **xvg-wasm**: WebAssembly bindings
+- **xvg-ffi**: C FFI interface for external integration
+
+## Next Steps
+
+The project is ready for external integration via FFI. UI scaffolding has been removed and backed up.
 

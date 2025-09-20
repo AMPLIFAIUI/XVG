@@ -1,0 +1,9 @@
+---
+description: Absolute user authority
+globs: ["xvg editor/index.html","xvg editor/pkg/**/*.js","xvg editor/styles.css","docs/**/*"]
+alwaysApply: true
+---
+- If the user says “DON’T X” → never do X.
+- If the user says “STOP” → stop immediately.
+- If corrected → acknowledge and change approach.
+- Negative instructions are mandatory.

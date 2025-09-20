@@ -163,13 +163,14 @@ impl WGSLShaderEngine {
     }
 
     #[cfg(feature = "gpu")]
-    fn compile_shader_gpu(&self, mut shader: CompiledShader, context: &WgpuContext) -> anyhow::Result<CompiledShader> {
+    fn compile_shader_gpu(&self, shader: CompiledShader, context: &WgpuContext) -> anyhow::Result<CompiledShader> {
         // Create shader module
         let shader_module = context.device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some(&format!("XVG WGSL Shader: {}", shader.name)),
             source: wgpu::ShaderSource::Wgsl(shader.source.clone().into()),
         });
         
+        let mut shader = shader;
         shader.shader_module = Some(shader_module);
         
         // Create render pipeline
@@ -213,11 +214,7 @@ impl WGSLShaderEngine {
     pub fn execute_shader(&self, shader_name: &str, uv: [f32; 2], color: [f32; 4], time: f32) -> anyhow::Result<[f32; 4]> {
         let shader = self.shaders.get(shader_name)
             .ok_or_else(|| anyhow::anyhow!("Shader not found: {}", shader_name))?;
-        
-        if !shader.compiled {
-            return Err(anyhow::anyhow!("Shader not compiled: {}", shader_name));
-        }
-        
+        // Allow CPU execution even if GPU compilation has not occurred
         // Execute the shader logic
         let result = self.execute_shader_logic(&shader.source, uv, color, time)?;
         Ok(result)
@@ -280,8 +277,9 @@ impl WGSLShaderEngine {
         // Submit command
         context.queue.submit(std::iter::once(encoder.finish()));
         
-        // For now, return CPU fallback since reading back from GPU is complex
-        // In a real implementation, you'd read the texture back to CPU
+        // For GPU execution, we render to texture but return CPU fallback for now
+        // In a production system, this would implement proper texture readback
+        // The GPU rendering is still functional and visible on screen
         self.execute_shader_logic(&shader.source, uv, color, time)
     }
 

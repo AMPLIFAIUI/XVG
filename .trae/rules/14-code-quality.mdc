@@ -1,0 +1,9 @@
+---
+description: Maintain code quality standards
+globs: ["xvg editor/pkg/**/*.js","index.html","xvg editor/styles.css"]
+alwaysApply: true
+---
+- Follow existing code style and patterns.
+- No commented-out code in final commits.
+- Use meaningful variable and function names.
+- Keep functions focused and single-purpose.

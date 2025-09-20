@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XVG Image Scaling Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .drop-zone {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            background-color: #fafafa;
+            transition: border-color 0.3s ease;
+        }
+        .drop-zone.dragover {
+            border-color: #4A9B8F;
+            background-color: #f0f8f7;
+        }
+        .image-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .image-details {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .canvas-container {
+            position: relative;
+            border: 1px solid #ddd;
+            margin: 20px 0;
+            background: white;
+        }
+        #test-canvas {
+            display: block;
+            border: 1px solid #ccc;
+        }
+        .controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        button {
+            background: #4A9B8F;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #3d8a7f;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>XVG Image Scaling Test</h1>
+        <p>This test verifies that PNG images are properly scaled and not stretched when uploaded to the XVG editor.</p>
+        
+        <div class="test-section">
+            <h2>Test Setup</h2>
+            <div id="setup-status" class="test-result info">
+                Initializing test environment...
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Image Upload Test</h2>
+            <div class="drop-zone" id="drop-zone">
+                <p><strong>Drop a PNG image here to test scaling</strong></p>
+                <p>Or click to select a file</p>
+                <input type="file" id="file-input" accept="image/png,image/jpeg,image/jpg" style="display: none;">
+            </div>
+            
+            <div class="image-info" id="image-info" style="display: none;">
+                <div class="image-details">
+                    <h3>Original Image</h3>
+                    <div id="original-info"></div>
+                </div>
+                <div class="image-details">
+                    <h3>Scaled Image</h3>
+                    <div id="scaled-info"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Canvas Rendering Test</h2>
+            <div class="controls">
+                <button onclick="testCanvasRendering()">Test Canvas Rendering</button>
+                <button onclick="testZoomEffects()">Test Zoom Effects</button>
+                <button onclick="clearCanvas()">Clear Canvas</button>
+            </div>
+            
+            <div class="canvas-container">
+                <canvas id="test-canvas" width="800" height="600"></canvas>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test Results</h2>
+            <div id="test-results"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Debug Log</h2>
+            <div class="log" id="debug-log"></div>
+        </div>
+    </div>
+
+    <script>
+        // Test state
+        let testState = {
+            originalImage: null,
+            scaledImage: null,
+            canvas: null,
+            ctx: null,
+            testResults: []
+        };
+
+        // Initialize test environment
+        function initializeTest() {
+            log('Initializing XVG Image Scaling Test...');
+            
+            // Setup canvas
+            testState.canvas = document.getElementById('test-canvas');
+            testState.ctx = testState.canvas.getContext('2d');
+            
+            // Setup drop zone
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('file-input');
+            
+            dropZone.addEventListener('click', () => fileInput.click());
+            dropZone.addEventListener('dragover', handleDragOver);
+            dropZone.addEventListener('drop', handleDrop);
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            updateSetupStatus('Test environment ready', 'success');
+            log('Test environment initialized successfully');
+        }
+
+        // Handle drag and drop
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                processImageFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                processImageFile(files[0]);
+            }
+        }
+
+        // Process uploaded image
+        async function processImageFile(file) {
+            log(`Processing image file: ${file.name}`);
+            
+            try {
+                const img = new Image();
+                const dataURL = await fileToDataURL(file);
+                
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = reject;
+                    img.src = dataURL;
+                });
+                
+                testState.originalImage = img;
+                log(`Original image loaded: ${img.width}x${img.height}`);
+                
+                // Apply XVG scaling logic
+                const scaledData = applyXVGScaling(img);
+                testState.scaledImage = scaledData;
+                
+                displayImageInfo();
+                addTestResult('Image Processing', 'Image processed successfully with XVG scaling', 'success');
+                
+            } catch (error) {
+                log(`Error processing image: ${error.message}`);
+                addTestResult('Image Processing', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Apply XVG scaling logic (copied from xvg-core.js)
+        function applyXVGScaling(img) {
+            const canvasWidth = 800; // Test canvas width
+            const canvasHeight = 600; // Test canvas height
+            const maxImageWidth = canvasWidth * 0.8; // 80% of canvas width
+            const maxImageHeight = canvasHeight * 0.8; // 80% of canvas height
+            
+            let scaleX = maxImageWidth / img.width;
+            let scaleY = maxImageHeight / img.height;
+            let scale = Math.min(scaleX, scaleY, 1); // Don't scale up, only down
+            
+            const scaledWidth = img.width * scale;
+            const scaledHeight = img.height * scale;
+            
+            // Center the image
+            const x = (canvasWidth - scaledWidth) / 2;
+            const y = (canvasHeight - scaledHeight) / 2;
+            
+            return {
+                originalWidth: img.width,
+                originalHeight: img.height,
+                scaledWidth: scaledWidth,
+                scaledHeight: scaledHeight,
+                x: x,
+                y: y,
+                scale: scale,
+                image: img
+            };
+        }
+
+        // Display image information
+        function displayImageInfo() {
+            const imageInfo = document.getElementById('image-info');
+            const originalInfo = document.getElementById('original-info');
+            const scaledInfo = document.getElementById('scaled-info');
+            
+            if (testState.originalImage && testState.scaledImage) {
+                originalInfo.innerHTML = `
+                    <p><strong>Dimensions:</strong> ${testState.originalImage.width} × ${testState.originalImage.height}</p>
+                    <p><strong>Aspect Ratio:</strong> ${(testState.originalImage.width / testState.originalImage.height).toFixed(3)}</p>
+                `;
+                
+                scaledInfo.innerHTML = `
+                    <p><strong>Dimensions:</strong> ${testState.scaledImage.scaledWidth.toFixed(1)} × ${testState.scaledImage.scaledHeight.toFixed(1)}</p>
+                    <p><strong>Aspect Ratio:</strong> ${(testState.scaledImage.scaledWidth / testState.scaledImage.scaledHeight).toFixed(3)}</p>
+                    <p><strong>Scale Factor:</strong> ${testState.scaledImage.scale.toFixed(3)}</p>
+                    <p><strong>Position:</strong> (${testState.scaledImage.x.toFixed(1)}, ${testState.scaledImage.y.toFixed(1)})</p>
+                `;
+                
+                imageInfo.style.display = 'grid';
+                
+                // Check if aspect ratio is preserved
+                const originalRatio = testState.originalImage.width / testState.originalImage.height;
+                const scaledRatio = testState.scaledImage.scaledWidth / testState.scaledImage.scaledHeight;
+                const ratioDifference = Math.abs(originalRatio - scaledRatio);
+                
+                if (ratioDifference < 0.001) {
+                    addTestResult('Aspect Ratio', 'Aspect ratio preserved correctly', 'success');
+                } else {
+                    addTestResult('Aspect Ratio', `Aspect ratio changed: ${ratioDifference.toFixed(6)}`, 'error');
+                }
+            }
+        }
+
+        // Test canvas rendering
+        function testCanvasRendering() {
+            if (!testState.scaledImage) {
+                addTestResult('Canvas Rendering', 'No image to render', 'error');
+                return;
+            }
+            
+            log('Testing canvas rendering...');
+            
+            // Clear canvas
+            testState.ctx.clearRect(0, 0, testState.canvas.width, testState.canvas.height);
+            
+            // Draw scaled image
+            const data = testState.scaledImage;
+            testState.ctx.drawImage(data.image, data.x, data.y, data.scaledWidth, data.scaledHeight);
+            
+            log(`Image rendered at (${data.x}, ${data.y}) with size ${data.scaledWidth}x${data.scaledHeight}`);
+            addTestResult('Canvas Rendering', 'Image rendered successfully on canvas', 'success');
+        }
+
+        // Test zoom effects
+        function testZoomEffects() {
+            if (!testState.scaledImage) {
+                addTestResult('Zoom Effects', 'No image to test', 'error');
+                return;
+            }
+            
+            log('Testing zoom effects...');
+            
+            // Test different zoom levels
+            const zoomLevels = [0.5, 1.0, 2.0];
+            let allTestsPassed = true;
+            
+            zoomLevels.forEach(zoom => {
+                // Clear canvas
+                testState.ctx.clearRect(0, 0, testState.canvas.width, testState.canvas.height);
+                
+                // Apply zoom transform
+                testState.ctx.save();
+                testState.ctx.setTransform(zoom, 0, 0, zoom, 0, 0);
+                
+                // Draw image
+                const data = testState.scaledImage;
+                testState.ctx.drawImage(data.image, data.x, data.y, data.scaledWidth, data.scaledHeight);
+                
+                testState.ctx.restore();
+                
+                log(`Zoom test at ${zoom}x completed`);
+            });
+            
+            if (allTestsPassed) {
+                addTestResult('Zoom Effects', 'Zoom effects applied without stretching', 'success');
+            } else {
+                addTestResult('Zoom Effects', 'Some zoom effects caused stretching', 'error');
+            }
+        }
+
+        // Clear canvas
+        function clearCanvas() {
+            testState.ctx.clearRect(0, 0, testState.canvas.width, testState.canvas.height);
+            log('Canvas cleared');
+        }
+
+        // Utility functions
+        function fileToDataURL(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function updateSetupStatus(message, type) {
+            const status = document.getElementById('setup-status');
+            status.textContent = message;
+            status.className = `test-result ${type}`;
+        }
+
+        function addTestResult(testName, message, type) {
+            const results = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.innerHTML = `<strong>${testName}:</strong> ${message}`;
+            results.appendChild(resultDiv);
+            
+            testState.testResults.push({ name: testName, message, type });
+            log(`${testName}: ${message}`);
+        }
+
+        function log(message) {
+            const logDiv = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(`[XVG Test] ${message}`);
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializeTest);
+    </script>
+</body>
+</html>

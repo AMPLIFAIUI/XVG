@@ -108,24 +108,25 @@ impl SDFEngine {
         engine
     }
 
-    /// Initialize neural network weights using Xavier/Glorot initialization
+    /// Initialize neural network weights with random values
     pub fn initialize_weights(&mut self) {
         self.weights.clear();
         self.biases.clear();
         
-        for i in 0..self.layer_sizes.len() - 1 {
-            let input_size = self.layer_sizes[i];
-            let output_size = self.layer_sizes[i + 1];
+        // Initialize weights and biases for each layer
+        for layer_idx in 0..self.layer_sizes.len() - 1 {
+            let input_size = self.layer_sizes[layer_idx];
+            let output_size = self.layer_sizes[layer_idx + 1];
             
-            // Xavier initialization for better gradient flow
-            let scale = (2.0 / input_size as f32).sqrt();
-            
-            // Initialize weights
+            // Initialize weights with Xavier/Glorot initialization
             let mut layer_weights = Vec::with_capacity(output_size);
             for _ in 0..output_size {
                 let mut neuron_weights = Vec::with_capacity(input_size);
+                let scale = (2.0 / (input_size + output_size) as f32).sqrt();
+                
                 for _ in 0..input_size {
-                    neuron_weights.push((rand::random::<f32>() - 0.5) * 2.0 * scale);
+                    let weight = (rand::random::<f32>() - 0.5) * 2.0 * scale;
+                    neuron_weights.push(weight);
                 }
                 layer_weights.push(neuron_weights);
             }
@@ -134,10 +135,14 @@ impl SDFEngine {
             // Initialize biases
             let mut layer_biases = Vec::with_capacity(output_size);
             for _ in 0..output_size {
-                layer_biases.push(0.0);
+                let bias = (rand::random::<f32>() - 0.5) * 0.1;
+                layer_biases.push(bias);
             }
             self.biases.push(layer_biases);
         }
+        
+        // Clear cache after weight initialization
+        self.evaluation_cache.clear();
     }
 
     /// Load pre-trained weights from XVG file
@@ -427,17 +432,47 @@ impl SDFEngine {
     }
 
     /// Extract path points from XVG path record
-    fn extract_path_points(&self, _path: &PathRecord) -> Vec<(f32, f32)> {
-        // Implementation would parse the path data and extract control points
-        // For now, return empty vector
-        Vec::new()
+    fn extract_path_points(&self, path: &PathRecord) -> Vec<(f32, f32)> {
+        let mut points = Vec::new();
+        
+        // Parse the path data which is stored as little-endian f32 pairs
+        let data = &path.data;
+        if data.len() < 8 { // Need at least 2 f32 values (x, y)
+            return points;
+        }
+        
+        let mut offset = 0;
+        while offset + 7 < data.len() {
+            let x = f32::from_le_bytes([data[offset], data[offset + 1], data[offset + 2], data[offset + 3]]);
+            let y = f32::from_le_bytes([data[offset + 4], data[offset + 5], data[offset + 6], data[offset + 7]]);
+            points.push((x, y));
+            offset += 8;
+        }
+        
+        points
     }
 
     /// Compute bounding box for path
-    fn compute_path_bounds(&self, _path: &PathRecord) -> (f32, f32, f32, f32) {
-        // Implementation would compute the bounding box of the path
-        // For now, return default bounds
-        (0.0, 0.0, 100.0, 100.0)
+    fn compute_path_bounds(&self, path: &PathRecord) -> (f32, f32, f32, f32) {
+        let points = self.extract_path_points(path);
+        
+        if points.is_empty() {
+            return (0.0, 0.0, 100.0, 100.0);
+        }
+        
+        let mut min_x = points[0].0;
+        let mut min_y = points[0].1;
+        let mut max_x = points[0].0;
+        let mut max_y = points[0].1;
+        
+        for &(x, y) in &points[1..] {
+            min_x = min_x.min(x);
+            min_y = min_y.min(y);
+            max_x = max_x.max(x);
+            max_y = max_y.max(y);
+        }
+        
+        (min_x, min_y, max_x - min_x, max_y - min_y)
     }
 
     /// Compute distance from point to line segment

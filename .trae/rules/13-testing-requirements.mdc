@@ -1,0 +1,9 @@
+---
+description: Test before claiming success
+globs: ["xvg editor/pkg/**/*.js","index.html","docs/**/*"]
+alwaysApply: true
+---
+- Test all changes before marking complete.
+- Provide evidence of successful tests.
+- No claims without verification.
+- Manual testing required for UI changes.

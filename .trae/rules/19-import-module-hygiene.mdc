@@ -1,0 +1,9 @@
+---
+description: Import/module hygiene
+globs: ["xvg editor/pkg/**/*.js"]
+alwaysApply: true
+---
+- Single source of truth per symbol.
+- Barrel files only in /index.* with explicit exports.
+- Use absolute imports via baseUrl.
+- Forbid cross-layer leaks.

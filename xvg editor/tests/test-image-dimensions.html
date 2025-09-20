@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XVG Image Dimensions Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .drop-zone {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            background: #fafafa;
+            margin: 20px 0;
+            transition: border-color 0.3s;
+        }
+        .drop-zone.dragover {
+            border-color: #0066ff;
+            background: #f0f8ff;
+        }
+        .results {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            font-family: monospace;
+        }
+        .canvas-container {
+            border: 1px solid #ccc;
+            margin: 20px 0;
+            display: inline-block;
+        }
+        .dimension-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .info-box {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .info-box h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        button {
+            background: #0066ff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056cc;
+        }
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #155724;
+            background: #d4edda;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>XVG Image Dimensions Test</h1>
+        <p>This test will show you exactly what dimensions your image displays at in the editor.</p>
+        
+        <div class="drop-zone" id="dropZone">
+            <p><strong>Drop an image here</strong></p>
+            <p>or <input type="file" id="fileInput" accept="image/*" style="display: none;"></p>
+            <button onclick="document.getElementById('fileInput').click()">Choose File</button>
+        </div>
+        
+        <div class="dimension-info">
+            <div class="info-box">
+                <h3>Original Image</h3>
+                <div id="originalInfo">No image loaded</div>
+            </div>
+            <div class="info-box">
+                <h3>Editor Display</h3>
+                <div id="displayInfo">No image loaded</div>
+            </div>
+        </div>
+        
+        <div class="canvas-container">
+            <canvas id="testCanvas" width="800" height="600" style="border: 1px solid #ccc;"></canvas>
+        </div>
+        
+        <div class="results" id="results">
+            <h3>Test Results</h3>
+            <div id="testOutput">Upload an image to see results</div>
+        </div>
+        
+        <div>
+            <button onclick="testZoom()">Test Zoom 1.5x</button>
+            <button onclick="testZoom(0.5)">Test Zoom 0.5x</button>
+            <button onclick="resetZoom()">Reset Zoom</button>
+            <button onclick="clearCanvas()">Clear Canvas</button>
+        </div>
+    </div>
+
+    <script>
+        let currentImage = null;
+        let currentImageData = null;
+        let canvasTransform = { zoom: 1, pan_x: 0, pan_y: 0 };
+        
+        const canvas = document.getElementById('testCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Drop zone functionality
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                processImage(files[0]);
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                processImage(e.target.files[0]);
+            }
+        });
+        
+        function processImage(file) {
+            if (!file.type.startsWith('image/')) {
+                showError('Please select an image file');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    currentImage = img;
+                    currentImageData = {
+                        originalWidth: img.naturalWidth,
+                        originalHeight: img.naturalHeight,
+                        filename: file.name
+                    };
+                    
+                    // Simulate the XVG editor's image processing
+                    const processedData = simulateXVGImageProcessing(img);
+                    
+                    updateDisplay(processedData);
+                    renderImage(processedData);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function simulateXVGImageProcessing(img) {
+            // This simulates the exact logic from xvg-core.js handleImageFile function
+            const canvasWidth = 2000; // Default canvas width
+            const canvasHeight = 1500; // Default canvas height
+            const maxImageWidth = canvasWidth * 0.8; // 80% of canvas width
+            const maxImageHeight = canvasHeight * 0.8; // 80% of canvas height
+            
+            let scaleX = maxImageWidth / img.width;
+            let scaleY = maxImageHeight / img.height;
+            let scale = Math.min(scaleX, scaleY, 1); // Don't scale up, only down
+            
+            const scaledWidth = img.width * scale;
+            const scaledHeight = img.height * scale;
+            
+            // Center positioning
+            const x = (canvasWidth - scaledWidth) / 2;
+            const y = (canvasHeight - scaledHeight) / 2;
+            
+            return {
+                originalWidth: img.width,
+                originalHeight: img.height,
+                scaledWidth: scaledWidth,
+                scaledHeight: scaledHeight,
+                scale: scale,
+                x: x,
+                y: y,
+                worldX: x,
+                worldY: y,
+                worldWidth: scaledWidth,
+                worldHeight: scaledHeight,
+                canvasWidth: canvasWidth,
+                canvasHeight: canvasHeight,
+                maxImageWidth: maxImageWidth,
+                maxImageHeight: maxImageHeight
+            };
+        }
+        
+        function updateDisplay(data) {
+            const originalInfo = document.getElementById('originalInfo');
+            const displayInfo = document.getElementById('displayInfo');
+            const testOutput = document.getElementById('testOutput');
+            
+            originalInfo.innerHTML = `
+                <strong>Dimensions:</strong> ${data.originalWidth} × ${data.originalHeight}px<br>
+                <strong>Aspect Ratio:</strong> ${(data.originalWidth / data.originalHeight).toFixed(3)}<br>
+                <strong>File:</strong> ${data.filename}
+            `;
+            
+            displayInfo.innerHTML = `
+                <strong>World Coordinates:</strong> ${data.worldWidth.toFixed(1)} × ${data.worldHeight.toFixed(1)}px<br>
+                <strong>Scale Factor:</strong> ${data.scale.toFixed(3)}<br>
+                <strong>Position:</strong> (${data.worldX.toFixed(1)}, ${data.worldY.toFixed(1)})<br>
+                <strong>Canvas Transform:</strong> zoom=${canvasTransform.zoom}, pan=(${canvasTransform.pan_x}, ${canvasTransform.pan_y})
+            `;
+            
+            // Calculate what it actually displays at with current transform
+            const displayWidth = data.worldWidth * canvasTransform.zoom;
+            const displayHeight = data.worldHeight * canvasTransform.zoom;
+            
+            testOutput.innerHTML = `
+                <div class="success">
+                    <strong>ACTUAL DISPLAYED DIMENSIONS:</strong><br>
+                    Width: ${displayWidth.toFixed(1)}px<br>
+                    Height: ${displayHeight.toFixed(1)}px<br>
+                    Aspect Ratio: ${(displayWidth / displayHeight).toFixed(3)}<br>
+                    <br>
+                    <strong>Original vs Displayed:</strong><br>
+                    Original: ${data.originalWidth} × ${data.originalHeight}px<br>
+                    Displayed: ${displayWidth.toFixed(1)} × ${displayHeight.toFixed(1)}px<br>
+                    <br>
+                    <strong>Scaling Analysis:</strong><br>
+                    Editor Scale: ${data.scale.toFixed(3)}<br>
+                    Canvas Transform: ${canvasTransform.zoom.toFixed(3)}<br>
+                    Total Scale: ${(data.scale * canvasTransform.zoom).toFixed(3)}
+                </div>
+            `;
+        }
+        
+        function renderImage(data) {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Apply transform (simulating renderCanvas)
+            ctx.setTransform(canvasTransform.zoom, 0, 0, canvasTransform.zoom, canvasTransform.pan_x, canvasTransform.pan_y);
+            
+            // Draw image using world coordinates
+            ctx.drawImage(currentImage, data.worldX, data.worldY, data.worldWidth, data.worldHeight);
+            
+            // Draw border to show the image bounds
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(data.worldX, data.worldY, data.worldWidth, data.worldHeight);
+            
+            // Reset transform
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            
+            // Draw canvas bounds
+            ctx.strokeStyle = '#0000ff';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        function testZoom(zoomLevel = 1.5) {
+            canvasTransform.zoom = zoomLevel;
+            if (currentImageData) {
+                updateDisplay(currentImageData);
+                renderImage(currentImageData);
+            }
+        }
+        
+        function resetZoom() {
+            canvasTransform.zoom = 1;
+            canvasTransform.pan_x = 0;
+            canvasTransform.pan_y = 0;
+            if (currentImageData) {
+                updateDisplay(currentImageData);
+                renderImage(currentImageData);
+            }
+        }
+        
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            currentImage = null;
+            currentImageData = null;
+            document.getElementById('originalInfo').innerHTML = 'No image loaded';
+            document.getElementById('displayInfo').innerHTML = 'No image loaded';
+            document.getElementById('testOutput').innerHTML = 'Upload an image to see results';
+        }
+        
+        function showError(message) {
+            const testOutput = document.getElementById('testOutput');
+            testOutput.innerHTML = `<div class="error">${message}</div>`;
+        }
+        
+        // Initialize
+        clearCanvas();
+    </script>
+</body>
+</html>

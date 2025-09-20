@@ -1,0 +1,1437 @@
+// XVG Editor Utilities - Core Utility Functions Only
+// Professional-grade utilities for the XVG vector graphics editor
+
+// ============================================================================
+// CORE UTILITY FUNCTIONS (No duplicate tools)
+// ============================================================================
+
+/**
+ * Color utility functions
+ */
+class ColorUtils {
+    /**
+     * Convert hex color to rgba array
+     */
+    static hexToRgba(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        if (result) {
+            return [
+                parseInt(result[1], 16) / 255,
+                parseInt(result[2], 16) / 255,
+                parseInt(result[3], 16) / 255,
+                1
+            ];
+        }
+        return [0, 0, 0, 1];
+    }
+
+    /**
+     * Convert rgba array to hex
+     */
+    static rgbaToHex(rgba) {
+        const [r, g, b] = rgba;
+        const toHex = (n) => {
+            const hex = Math.round(n * 255).toString(16);
+            return hex.length === 1 ? '0' + hex : hex;
+        };
+        return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    }
+
+    /**
+     * Blend two colors
+     */
+    static blend(color1, color2, factor = 0.5) {
+        return [
+            color1[0] * (1 - factor) + color2[0] * factor,
+            color1[1] * (1 - factor) + color2[1] * factor,
+            color1[2] * (1 - factor) + color2[2] * factor,
+            color1[3] * (1 - factor) + color2[3] * factor
+        ];
+    }
+}
+
+/**
+ * Math utility functions
+ */
+class MathUtils {
+    /**
+     * Clamp value between min and max
+     */
+    static clamp(value, min, max) {
+        return Math.min(Math.max(value, min), max);
+    }
+
+    /**
+     * Linear interpolation
+     */
+    static lerp(a, b, t) {
+        return a + (b - a) * t;
+    }
+
+    /**
+     * Smooth step interpolation
+     */
+    static smoothStep(edge0, edge1, x) {
+        const t = MathUtils.clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+        return t * t * (3.0 - 2.0 * t);
+    }
+
+    /**
+     * Convert degrees to radians
+     */
+    static degToRad(degrees) {
+        return degrees * Math.PI / 180;
+    }
+
+    /**
+     * Convert radians to degrees
+     */
+    static radToDeg(radians) {
+        return radians * 180 / Math.PI;
+    }
+}
+
+/**
+ * File utility functions
+ */
+class FileUtils {
+    /**
+     * Read file as text
+     */
+    static readAsText(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsText(file);
+        });
+    }
+
+    /**
+     * Read file as array buffer
+     */
+    static readAsArrayBuffer(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    /**
+     * Download content as file
+     */
+    static download(content, filename, mimeType = 'text/plain') {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+}
+
+/**
+ * Canvas utility functions - CRITICAL FOR TOOLS TO WORK
+ */
+class CanvasUtils {
+    /**
+     * Convert screen coordinates to canvas coordinates
+     * This is essential for the tools to work properly
+     */
+    static screenToCanvas(screenX, screenY) {
+        if (!window.appState || !window.appState.canvas) {
+            console.warn('⚠️ CanvasUtils.screenToCanvas: appState or canvas not available');
+            return { x: screenX, y: screenY };
+        }
+
+        const canvas = window.appState.canvas;
+        const transform = window.appState.canvasTransform || { zoom: 1, pan_x: 0, pan_y: 0 };
+        
+        try {
+            const rect = canvas.getBoundingClientRect();
+            const zoom = transform.zoom || 1;
+            const panX = transform.pan_x || 0;
+            const panY = transform.pan_y || 0;
+            
+            const result = {
+                x: (screenX - rect.left - panX) / zoom,
+                y: (screenY - rect.top - panY) / zoom
+            };
+            
+            return result;
+        } catch (error) {
+            console.error('❌ CanvasUtils.screenToCanvas error:', error);
+            return { x: screenX, y: screenY };
+        }
+    }
+
+    /**
+     * Convert canvas coordinates to screen coordinates
+     */
+    static canvasToScreen(canvasX, canvasY) {
+        if (!window.appState || !window.appState.canvas) {
+            console.warn('⚠️ CanvasUtils.canvasToScreen: appState or canvas not available');
+            return { x: canvasX, y: canvasY };
+        }
+
+        const canvas = window.appState.canvas;
+        const transform = window.appState.canvasTransform || { zoom: 1, pan_x: 0, pan_y: 0 };
+        
+        try {
+            const rect = canvas.getBoundingClientRect();
+            const zoom = transform.zoom || 1;
+            const panX = transform.pan_x || 0;
+            const panY = transform.pan_y || 0;
+            
+            const result = {
+                x: canvasX * zoom + panX + rect.left,
+                y: canvasY * zoom + panY + rect.top
+            };
+            
+            return result;
+        } catch (error) {
+            console.error('❌ CanvasUtils.canvasToScreen error:', error);
+            return { x: canvasX, y: canvasY };
+        }
+    }
+
+    /**
+     * Check if a point is inside a rectangle
+     */
+    static isPointInRect(point, rect) {
+        return point.x >= rect.x && 
+               point.x <= rect.x + rect.width && 
+               point.y >= rect.y && 
+               point.y <= rect.y + rect.height;
+    }
+
+    /**
+     * Calculate distance between two points
+     */
+    static distance(p1, p2) {
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    /**
+     * Check if a point is near a path (for hit testing)
+     */
+    static isPointNearPath(point, path, tolerance = 5) {
+        if (!path || !path.data || path.data.length < 4) return false;
+        
+        // Simple bounding box test first
+        const bounds = this.calculatePathBounds(path);
+        if (!bounds) return false;
+        
+        // Expand bounds by tolerance
+        const expandedBounds = {
+            minX: bounds.minX - tolerance,
+            minY: bounds.minY - tolerance,
+            maxX: bounds.maxX + tolerance,
+            maxY: bounds.maxY + tolerance
+        };
+        
+        if (point.x < expandedBounds.minX || point.x > expandedBounds.maxX ||
+            point.y < expandedBounds.minY || point.y > expandedBounds.maxY) {
+            return false;
+        }
+        
+        // More precise hit testing for complex paths
+        if (path.data.length > 4) {
+            return this.pointInPolygon(point, path.data);
+        }
+        
+        return true;
+    }
+
+    /**
+     * Calculate bounds for a path
+     */
+    static calculatePathBounds(path) {
+        if (!path || !path.data || path.data.length < 4) return null;
+        
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        
+        for (let i = 0; i < path.data.length; i += 2) {
+            const x = path.data[i];
+            const y = path.data[i + 1];
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+        }
+        
+        if (minX === Infinity) return null;
+        
+        return { minX, minY, maxX, maxY };
+    }
+
+    /**
+     * Point in polygon test using ray casting
+     */
+    static pointInPolygon(point, polygonData) {
+        let inside = false;
+        const x = point.x;
+        const y = point.y;
+        
+        for (let i = 0, j = polygonData.length - 2; i < polygonData.length; i += 2) {
+            const xi = polygonData[i];
+            const yi = polygonData[i + 1];
+            const xj = polygonData[j];
+            const yj = polygonData[j + 1];
+            
+            if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+                inside = !inside;
+            }
+            j = i;
+        }
+        
+        return inside;
+    }
+
+    /**
+     * Mark canvas as dirty for re-rendering
+     */
+    static markCanvasDirty() {
+        if (window.markCanvasDirty && typeof window.markCanvasDirty === 'function') {
+            window.markCanvasDirty();
+        } else if (window.renderCanvas && typeof window.renderCanvas === 'function') {
+            window.renderCanvas();
+        }
+    }
+
+    /**
+     * Test if tools are properly initialized and working
+     */
+    static testTools() {
+        console.log('🧪 Testing XVG Tools...');
+        
+        const toolStatus = {
+            XVGSelectionTool: !!window.XVGSelectionTool,
+            XVGPanTool: !!window.XVGPanTool,
+            XVGTools: !!window.XVGTools,
+            screenToCanvas: !!window.screenToCanvas,
+            markCanvasDirty: !!window.markCanvasDirty,
+            renderCanvas: !!window.renderCanvas,
+            appState: !!window.appState,
+            canvas: !!(window.appState && window.appState.canvas)
+        };
+        
+        console.log('🔧 Tool Status:', toolStatus);
+        
+        // Test coordinate conversion
+        if (toolStatus.screenToCanvas) {
+            try {
+                const testCoords = window.screenToCanvas(100, 100);
+                console.log('✅ Coordinate conversion test:', testCoords);
+            } catch (error) {
+                console.error('❌ Coordinate conversion test failed:', error);
+            }
+        }
+        
+        // Test tool methods
+        if (toolStatus.XVGSelectionTool) {
+            console.log('✅ XVGSelectionTool methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.XVGSelectionTool)));
+        }
+        
+        if (toolStatus.XVGPanTool) {
+            console.log('✅ XVGPanTool methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.XVGPanTool)));
+        }
+        
+        return toolStatus;
+    }
+}
+
+// ============================================================================
+// CORE UTILITY EXPORTS
+// ============================================================================
+
+// Export core utilities for use by other modules
+if (typeof window !== 'undefined') {
+    window.XVGColorUtils = ColorUtils;
+    window.XVGMathUtils = MathUtils;
+    window.XVGFileUtils = FileUtils;
+    window.XVGCanvasUtils = CanvasUtils;
+
+    // Also export the critical coordinate conversion functions globally for tools
+    window.screenToCanvas = CanvasUtils.screenToCanvas;
+    window.canvasToScreen = CanvasUtils.canvasToScreen;
+    window.markCanvasDirty = CanvasUtils.markCanvasDirty;
+
+    console.log('✅ XVG Core Utilities loaded successfully');
+    console.log('🔧 Canvas utilities available for tools');
+}
+
+
+
+
+
+
+
+// ============================================================================
+// PERFORMANCE MONITORING - INTEGRATED
+// ============================================================================
+
+class XVGPerformanceMonitor {
+    constructor() {
+        this.metrics = {
+            fps: 0,
+            frameTime: 0,
+            renderTime: 0,
+            memoryUsage: 0,
+            canvasOperations: 0,
+            pathCount: 0,
+            vertexCount: 0
+        };
+        
+        this.history = {
+            fps: [],
+            frameTime: [],
+            renderTime: [],
+            memoryUsage: []
+        };
+        
+        this.maxHistoryLength = 60;
+        this.lastFrameTime = performance.now();
+        this.frameCount = 0;
+        this.isMonitoring = false;
+        
+        // Performance thresholds
+        this.thresholds = {
+            minFPS: 30,
+            maxFrameTime: 33, // ~30fps
+            maxMemory: 500 * 1024 * 1024, // 500MB
+            maxPaths: 10000,
+            maxVertices: 1000000
+        };
+        
+        // Optimization flags
+        this.optimizations = {
+            culling: true,
+            batching: true,
+            caching: true,
+            throttling: true,
+            levelOfDetail: true
+        };
+        
+        // Canvas cache
+        this.canvasCache = new Map();
+        this.cacheSize = 0;
+        this.maxCacheSize = 100 * 1024 * 1024; // 100MB
+    }
+    
+    /**
+     * Start performance monitoring
+     */
+    start() {
+        if (this.isMonitoring) return;
+        
+        this.isMonitoring = true;
+        this.monitoringInterval = setInterval(() => this.update(), 1000);
+        this.frameAnimationId = requestAnimationFrame(() => this.measureFrame());
+        
+        console.log('📊 Performance monitoring started');
+    }
+    
+    /**
+     * Stop performance monitoring
+     */
+    stop() {
+        if (!this.isMonitoring) return;
+        
+        this.isMonitoring = false;
+        clearInterval(this.monitoringInterval);
+        cancelAnimationFrame(this.frameAnimationId);
+        
+        console.log('📊 Performance monitoring stopped');
+    }
+    
+    /**
+     * Measure frame performance
+     */
+    measureFrame() {
+        if (!this.isMonitoring) return;
+        
+        const now = performance.now();
+        const frameTime = now - this.lastFrameTime;
+        
+        this.metrics.frameTime = frameTime;
+        this.frameCount++;
+        
+        // Update FPS every second
+        if (this.frameCount >= 60) {
+            this.metrics.fps = Math.round(1000 / (frameTime || 1));
+            this.frameCount = 0;
+        }
+        
+        this.lastFrameTime = now;
+        this.frameAnimationId = requestAnimationFrame(() => this.measureFrame());
+    }
+    
+    /**
+     * Update performance metrics
+     */
+    update() {
+        // Update memory usage if available
+        if (performance.memory) {
+            this.metrics.memoryUsage = performance.memory.usedJSHeapSize;
+        }
+        
+        // Update path and vertex counts
+        if (window.appState) {
+            this.metrics.pathCount = window.appState.paths ? window.appState.paths.length : 0;
+            this.metrics.vertexCount = this.countVertices();
+        }
+        
+        // Add to history
+        this.addToHistory('fps', this.metrics.fps);
+        this.addToHistory('frameTime', this.metrics.frameTime);
+        this.addToHistory('memoryUsage', this.metrics.memoryUsage);
+        
+        // Check thresholds and optimize if needed
+        this.checkPerformance();
+    }
+    
+    /**
+     * Count total vertices in all paths
+     */
+    countVertices() {
+        if (!window.appState || !window.appState.paths) return 0;
+        
+        let count = 0;
+        window.appState.paths.forEach(path => {
+            if (path.data) {
+                count += path.data.length / 2;
+            }
+        });
+        
+        return count;
+    }
+    
+    /**
+     * Add metric to history
+     */
+    addToHistory(metric, value) {
+        if (!this.history[metric]) {
+            this.history[metric] = [];
+        }
+        
+        this.history[metric].push(value);
+        
+        if (this.history[metric].length > this.maxHistoryLength) {
+            this.history[metric].shift();
+        }
+    }
+    
+    /**
+     * Check performance and trigger optimizations
+     */
+    checkPerformance() {
+        const warnings = [];
+        
+        if (this.metrics.fps < this.thresholds.minFPS && this.metrics.fps > 0) {
+            warnings.push(`Low FPS: ${this.metrics.fps}`);
+            this.optimizeRendering();
+        }
+        
+        if (this.metrics.frameTime > this.thresholds.maxFrameTime) {
+            warnings.push(`High frame time: ${this.metrics.frameTime.toFixed(2)}ms`);
+        }
+        
+        if (this.metrics.memoryUsage > this.thresholds.maxMemory) {
+            warnings.push(`High memory usage: ${(this.metrics.memoryUsage / 1024 / 1024).toFixed(2)}MB`);
+            this.optimizeMemory();
+        }
+        
+        if (this.metrics.pathCount > this.thresholds.maxPaths) {
+            warnings.push(`Too many paths: ${this.metrics.pathCount}`);
+            this.optimizePaths();
+        }
+        
+        if (warnings.length > 0) {
+            console.warn('⚠️ Performance warnings:', warnings);
+        }
+    }
+    
+    /**
+     * Optimize rendering performance
+     */
+    optimizeRendering() {
+        console.log('🔧 Optimizing rendering...');
+        
+        // Enable viewport culling
+        if (this.optimizations.culling) {
+            this.enableViewportCulling();
+        }
+        
+        // Enable render batching
+        if (this.optimizations.batching) {
+            this.enableRenderBatching();
+        }
+        
+        // Reduce quality for complex scenes
+        if (this.optimizations.levelOfDetail) {
+            this.adjustLevelOfDetail();
+        }
+    }
+    
+    /**
+     * Optimize memory usage
+     */
+    optimizeMemory() {
+        console.log('🔧 Optimizing memory...');
+        
+        // Clear unused cache
+        this.clearCache();
+        
+        // Compress path data
+        this.compressPathData();
+        
+        // Release unused resources
+        this.releaseUnusedResources();
+        
+        // Force garbage collection if available
+        if (window.gc) {
+            window.gc();
+        }
+    }
+    
+    /**
+     * Optimize path rendering
+     */
+    optimizePaths() {
+        console.log('🔧 Optimizing paths...');
+        
+        // Simplify complex paths
+        if (window.appState && window.appState.paths) {
+            window.appState.paths.forEach(path => {
+                if (path.data && path.data.length > 1000) {
+                    // Use Douglas-Peucker simplification
+                    this.simplifyPath(path);
+                }
+            });
+        }
+    }
+    
+    /**
+     * Enable viewport culling
+     */
+    enableViewportCulling() {
+        if (!window.appState) return;
+        
+        // Mark paths outside viewport as non-renderable
+        const viewport = this.getViewport();
+        
+        window.appState.paths.forEach(path => {
+            if (path.data) {
+                const bounds = this.getPathBounds(path);
+                path._culled = !this.boundsIntersect(bounds, viewport);
+            }
+        });
+    }
+    
+    /**
+     * Enable render batching
+     */
+    enableRenderBatching() {
+        // Group similar rendering operations
+        if (!window.appState || !window.appState.paths) return;
+        
+        // Sort paths by style to minimize state changes
+        window.appState.paths.sort((a, b) => {
+            const styleA = JSON.stringify(a.style || {});
+            const styleB = JSON.stringify(b.style || {});
+            return styleA.localeCompare(styleB);
+        });
+    }
+    
+    /**
+     * Adjust level of detail based on zoom
+     */
+    adjustLevelOfDetail() {
+        if (!window.appState) return;
+        
+        const zoom = window.appState.canvasTransform ? window.appState.canvasTransform.zoom : 1;
+        
+        // Reduce detail for zoomed out views
+        if (zoom < 0.5) {
+            window.appState._renderQuality = 'low';
+        } else if (zoom < 1.0) {
+            window.appState._renderQuality = 'medium';
+        } else {
+            window.appState._renderQuality = 'high';
+        }
+    }
+    
+    /**
+     * Clear render cache
+     */
+    clearCache() {
+        const oldSize = this.cacheSize;
+        this.canvasCache.clear();
+        this.cacheSize = 0;
+        
+        console.log(`🗑️ Cleared ${(oldSize / 1024 / 1024).toFixed(2)}MB of cache`);
+    }
+    
+    /**
+     * Compress path data
+     */
+    compressPathData() {
+        if (!window.appState || !window.appState.paths) return;
+        
+        let compressed = 0;
+        
+        window.appState.paths.forEach(path => {
+            if (path.data && path.data.length > 100) {
+                // Round coordinates to reduce precision
+                for (let i = 0; i < path.data.length; i++) {
+                    path.data[i] = Math.round(path.data[i] * 100) / 100;
+                }
+                compressed++;
+            }
+        });
+        
+        if (compressed > 0) {
+            console.log(`🗜️ Compressed ${compressed} paths`);
+        }
+    }
+    
+    /**
+     * Release unused resources
+     */
+    releaseUnusedResources() {
+        // Release unused image bitmaps
+        if (!window.appState || !window.appState.paths) return;
+        
+        window.appState.paths.forEach(path => {
+            if (path.type === 'image' && path.imageBitmap && !path._inUse) {
+                if (path.imageBitmap.close) {
+                    path.imageBitmap.close();
+                    path.imageBitmap = null;
+                }
+            }
+        });
+    }
+    
+    /**
+     * Simplify path using Douglas-Peucker algorithm
+     * @param {Object} path - The path object to simplify
+     * @param {number} tolerance - The simplification tolerance (higher = more simplification)
+     * @returns {Object} The simplified path
+     */
+    simplifyPath(path, tolerance = 1.0) {
+        if (!path.data || path.data.length < 6) return path;
+        
+        // Convert flat array to points for easier processing
+        const points = [];
+        for (let i = 0; i < path.data.length; i += 2) {
+            points.push({ x: path.data[i], y: path.data[i + 1] });
+        }
+        
+        // Apply Douglas-Peucker algorithm
+        const simplified = this.douglasPeucker(points, tolerance);
+        
+        // Convert back to flat array
+        const result = [];
+        for (const point of simplified) {
+            result.push(point.x, point.y);
+        }
+        
+        // Update path data if we have enough points
+        if (result.length >= 4) {
+            path.data = result;
+        }
+        
+        return path;
+    }
+    
+    /**
+     * Calculate perpendicular distance from a point to a line segment
+     * @param {Object} point - The point {x, y}
+     * @param {Object} lineStart - Start of line segment {x, y}
+     * @param {Object} lineEnd - End of line segment {x, y}
+     * @returns {number} The perpendicular distance
+     */
+    perpendicularDistance(point, lineStart, lineEnd) {
+        const dx = lineEnd.x - lineStart.x;
+        const dy = lineEnd.y - lineStart.y;
+        
+        // If the line is just a point, return distance to that point
+        if (dx === 0 && dy === 0) {
+            return Math.hypot(point.x - lineStart.x, point.y - lineStart.y);
+        }
+        
+        // Calculate perpendicular distance
+        const lineLengthSquared = dx * dx + dy * dy;
+        const t = ((point.x - lineStart.x) * dx + (point.y - lineStart.y) * dy) / lineLengthSquared;
+        
+        if (t < 0) {
+            // Point is beyond the start of the line
+            return Math.hypot(point.x - lineStart.x, point.y - lineStart.y);
+        }
+        if (t > 1) {
+            // Point is beyond the end of the line
+            return Math.hypot(point.x - lineEnd.x, point.y - lineEnd.y);
+        }
+        
+        // Perpendicular distance
+        const projectionX = lineStart.x + t * dx;
+        const projectionY = lineStart.y + t * dy;
+        return Math.hypot(point.x - projectionX, point.y - projectionY);
+    }
+    
+    /**
+     * Douglas-Peucker algorithm for line simplification
+     * @param {Array} points - Array of points {x, y}
+     * @param {number} epsilon - Tolerance threshold
+     * @returns {Array} Simplified array of points
+     */
+    douglasPeucker(points, epsilon) {
+        if (points.length <= 2) return points;
+        
+        // Find the point with the maximum distance
+        let maxDistance = 0;
+        let maxIndex = 0;
+        
+        const firstPoint = points[0];
+        const lastPoint = points[points.length - 1];
+        
+        for (let i = 1; i < points.length - 1; i++) {
+            const distance = this.perpendicularDistance(points[i], firstPoint, lastPoint);
+            
+            if (distance > maxDistance) {
+                maxDistance = distance;
+                maxIndex = i;
+            }
+        }
+        
+        // If max distance is greater than epsilon, recursively simplify
+        if (maxDistance > epsilon) {
+            // Recursive call
+            const firstHalf = this.douglasPeucker(points.slice(0, maxIndex + 1), epsilon);
+            const secondHalf = this.douglasPeucker(points.slice(maxIndex), epsilon);
+            
+            // Concatenate the two parts (removing duplicate point)
+            return firstHalf.slice(0, -1).concat(secondHalf);
+        } else {
+            // All points in this segment are within tolerance, so simplify to just endpoints
+            return [firstPoint, lastPoint];
+        }
+    }
+    
+    /**
+     * Get current viewport bounds
+     */
+    getViewport() {
+        if (!window.appState || !window.canvas) {
+            return { left: 0, top: 0, right: 1000, bottom: 1000 };
+        }
+        
+        const transform = window.appState.canvasTransform || {};
+        const zoom = transform.zoom || 1;
+        const panX = transform.pan_x || 0;
+        const panY = transform.pan_y || 0;
+        
+        return {
+            left: -panX / zoom,
+            top: -panY / zoom,
+            right: (window.canvas.width - panX) / zoom,
+            bottom: (window.canvas.height - panY) / zoom
+        };
+    }
+    
+    /**
+     * Get path bounds
+     */
+    getPathBounds(path) {
+        if (!path.data || path.data.length < 2) {
+            return { left: 0, top: 0, right: 0, bottom: 0 };
+        }
+        
+        let minX = path.data[0];
+        let minY = path.data[1];
+        let maxX = path.data[0];
+        let maxY = path.data[1];
+        
+        for (let i = 2; i < path.data.length; i += 2) {
+            minX = Math.min(minX, path.data[i]);
+            minY = Math.min(minY, path.data[i + 1]);
+            maxX = Math.max(maxX, path.data[i]);
+            maxY = Math.max(maxY, path.data[i + 1]);
+        }
+        
+        return { left: minX, top: minY, right: maxX, bottom: maxY };
+    }
+    
+    /**
+     * Check if two bounds intersect
+     */
+    boundsIntersect(a, b) {
+        return !(a.right < b.left || a.left > b.right || 
+                 a.bottom < b.top || a.top > b.bottom);
+    }
+    
+    /**
+     * Get performance report
+     */
+    getReport() {
+        const avgFPS = this.getAverage(this.history.fps);
+        const avgFrameTime = this.getAverage(this.history.frameTime);
+        const avgMemory = this.getAverage(this.history.memoryUsage);
+        
+        return {
+            current: this.metrics,
+            averages: {
+                fps: avgFPS,
+                frameTime: avgFrameTime,
+                memoryUsage: avgMemory
+            },
+            thresholds: this.thresholds,
+            optimizations: this.optimizations,
+            cacheSize: this.cacheSize,
+            warnings: this.getWarnings()
+        };
+    }
+    
+    /**
+     * Get average of array
+     */
+    getAverage(arr) {
+        if (!arr || arr.length === 0) return 0;
+        return arr.reduce((a, b) => a + b, 0) / arr.length;
+    }
+    
+    /**
+     * Get current warnings
+     */
+    getWarnings() {
+        const warnings = [];
+        
+        if (this.metrics.fps < this.thresholds.minFPS && this.metrics.fps > 0) {
+            warnings.push({
+                type: 'fps',
+                message: `FPS below threshold: ${this.metrics.fps} < ${this.thresholds.minFPS}`,
+                severity: 'high'
+            });
+        }
+        
+        if (this.metrics.memoryUsage > this.thresholds.maxMemory) {
+            warnings.push({
+                type: 'memory',
+                message: `Memory usage high: ${(this.metrics.memoryUsage / 1024 / 1024).toFixed(2)}MB`,
+                severity: 'medium'
+            });
+        }
+        
+        if (this.metrics.pathCount > this.thresholds.maxPaths) {
+            warnings.push({
+                type: 'paths',
+                message: `Too many paths: ${this.metrics.pathCount}`,
+                severity: 'low'
+            });
+        }
+        
+        return warnings;
+    }
+    
+    /**
+     * Display performance overlay
+     */
+    showOverlay() {
+        let overlay = document.getElementById('performance-overlay');
+        
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'performance-overlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                background: rgba(0, 0, 0, 0.8);
+                color: #00ff00;
+                padding: 10px;
+                font-family: monospace;
+                font-size: 12px;
+                z-index: 10000;
+                border-radius: 4px;
+                min-width: 200px;
+            `;
+            document.body.appendChild(overlay);
+        }
+        
+        const report = this.getReport();
+        
+        overlay.innerHTML = `
+            <div style="margin-bottom: 5px; font-weight: bold;">Performance Monitor</div>
+            <div>FPS: ${report.current.fps}</div>
+            <div>Frame Time: ${report.current.frameTime.toFixed(2)}ms</div>
+            <div>Memory: ${(report.current.memoryUsage / 1024 / 1024).toFixed(2)}MB</div>
+            <div>Paths: ${report.current.pathCount}</div>
+            <div>Vertices: ${report.current.vertexCount}</div>
+            ${report.warnings.length > 0 ? `<div style="color: #ff0000; margin-top: 5px;">⚠️ ${report.warnings.length} warnings</div>` : ''}
+        `;
+        
+        overlay.style.display = 'block';
+    }
+    
+    /**
+     * Hide performance overlay
+     */
+    hideOverlay() {
+        const overlay = document.getElementById('performance-overlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+    }
+}
+
+// ============================================================================
+// VALIDATION SYSTEM - INTEGRATED
+// ============================================================================
+
+class XVGValidator {
+    constructor() {
+        this.validationRules = {
+            paths: {
+                minDataLength: 4,
+                maxDataLength: 100000,
+                requiredFields: ['data', 'style', 'type'],
+                validTypes: ['path', 'line', 'rectangle', 'circle', 'polygon', 'text', 'image']
+            },
+            styles: {
+                fill: {
+                    requiredFields: ['color'],
+                    colorFormat: 'rgba_array'
+                },
+                stroke: {
+                    requiredFields: ['color', 'width'],
+                    colorFormat: 'rgba_array',
+                    minWidth: 0,
+                    maxWidth: 100
+                }
+            },
+            canvas: {
+                minWidth: 100,
+                maxWidth: 10000,
+                minHeight: 100,
+                maxHeight: 10000
+            },
+            coordinates: {
+                minValue: -1000000,
+                maxValue: 1000000
+            }
+        };
+        
+        this.errors = [];
+        this.warnings = [];
+    }
+    
+    /**
+     * Validate complete XVG document
+     */
+    validateDocument(document) {
+        this.clearResults();
+        
+        console.log('🔍 Validating XVG document...');
+        
+        // Validate document structure
+        this.validateDocumentStructure(document);
+        
+        // Validate canvas settings
+        if (document.canvas) {
+            this.validateCanvas(document.canvas);
+        }
+        
+        // Validate paths
+        if (document.paths && Array.isArray(document.paths)) {
+            document.paths.forEach((path, index) => {
+                this.validatePath(path, index);
+            });
+        }
+        
+        // Validate layers
+        if (document.layers && Array.isArray(document.layers)) {
+            document.layers.forEach((layer, index) => {
+                this.validateLayer(layer, index);
+            });
+        }
+        
+        const result = {
+            valid: this.errors.length === 0,
+            errors: this.errors,
+            warnings: this.warnings,
+            summary: {
+                totalErrors: this.errors.length,
+                totalWarnings: this.warnings.length,
+                pathsValidated: document.paths ? document.paths.length : 0
+            }
+        };
+        
+        console.log('✅ Validation complete:', result.summary);
+        return result;
+    }
+    
+    /**
+     * Validate document structure
+     */
+    validateDocumentStructure(document) {
+        if (!document || typeof document !== 'object') {
+            this.addError('Document must be an object');
+            return;
+        }
+        
+        // Check required top-level fields
+        const requiredFields = ['version', 'paths'];
+        requiredFields.forEach(field => {
+            if (!(field in document)) {
+                this.addError(`Missing required field: ${field}`);
+            }
+        });
+        
+        // Validate version
+        if (document.version && typeof document.version !== 'string') {
+            this.addError('Version must be a string');
+        }
+        
+        // Validate paths array
+        if (document.paths && !Array.isArray(document.paths)) {
+            this.addError('Paths must be an array');
+        }
+    }
+    
+    /**
+     * Validate canvas settings
+     */
+    validateCanvas(canvas) {
+        if (!canvas || typeof canvas !== 'object') {
+            this.addError('Canvas must be an object');
+            return;
+        }
+        
+        // Validate dimensions
+        if (typeof canvas.width === 'number') {
+            if (canvas.width < this.validationRules.canvas.minWidth || 
+                canvas.width > this.validationRules.canvas.maxWidth) {
+                this.addError(`Canvas width out of range: ${canvas.width}`);
+            }
+        }
+        
+        if (typeof canvas.height === 'number') {
+            if (canvas.height < this.validationRules.canvas.minHeight || 
+                canvas.height > this.validationRules.canvas.maxHeight) {
+                this.addError(`Canvas height out of range: ${canvas.height}`);
+            }
+        }
+    }
+    
+    /**
+     * Validate individual path
+     */
+    validatePath(path, index) {
+        const pathId = `Path[${index}]`;
+        
+        if (!path || typeof path !== 'object') {
+            this.addError(`${pathId}: Must be an object`);
+            return;
+        }
+        
+        // Check required fields
+        this.validationRules.paths.requiredFields.forEach(field => {
+            if (!(field in path)) {
+                this.addError(`${pathId}: Missing required field: ${field}`);
+            }
+        });
+        
+        // Validate type
+        if (path.type && !this.validationRules.paths.validTypes.includes(path.type)) {
+            this.addError(`${pathId}: Invalid type: ${path.type}`);
+        }
+        
+        // Validate data array
+        if (path.data) {
+            this.validatePathData(path.data, pathId);
+        }
+        
+        // Validate style
+        if (path.style) {
+            this.validateStyle(path.style, pathId);
+        }
+        
+        // Validate transform matrix
+        if (path.tf) {
+            this.validateTransform(path.tf, pathId);
+        }
+    }
+    
+    /**
+     * Validate path data
+     */
+    validatePathData(data, pathId) {
+        if (!Array.isArray(data)) {
+            this.addError(`${pathId}: Data must be an array`);
+            return;
+        }
+        
+        // Check data length
+        if (data.length < this.validationRules.paths.minDataLength) {
+            this.addError(`${pathId}: Data too short: ${data.length}`);
+        }
+        
+        if (data.length > this.validationRules.paths.maxDataLength) {
+            this.addWarning(`${pathId}: Data very long: ${data.length}`);
+        }
+        
+        // Check that data length is even (x,y pairs)
+        if (data.length % 2 !== 0) {
+            this.addError(`${pathId}: Data length must be even (x,y pairs)`);
+        }
+        
+        // Validate coordinate values
+        data.forEach((coord, i) => {
+            if (typeof coord !== 'number' || !isFinite(coord)) {
+                this.addError(`${pathId}: Invalid coordinate at index ${i}: ${coord}`);
+            } else if (coord < this.validationRules.coordinates.minValue || 
+                      coord > this.validationRules.coordinates.maxValue) {
+                this.addWarning(`${pathId}: Coordinate out of range at index ${i}: ${coord}`);
+            }
+        });
+    }
+    
+    /**
+     * Validate style object
+     */
+    validateStyle(style, pathId) {
+        if (!style || typeof style !== 'object') {
+            this.addError(`${pathId}: Style must be an object`);
+            return;
+        }
+        
+        // Validate fill
+        if (style.fill) {
+            this.validateFillStyle(style.fill, pathId);
+        }
+        
+        // Validate stroke
+        if (style.stroke) {
+            this.validateStrokeStyle(style.stroke, pathId);
+        }
+        
+        // Validate opacity
+        if ('opacity' in style) {
+            if (typeof style.opacity !== 'number' || 
+                style.opacity < 0 || style.opacity > 1) {
+                this.addError(`${pathId}: Invalid opacity: ${style.opacity}`);
+            }
+        }
+    }
+    
+    /**
+     * Validate fill style
+     */
+    validateFillStyle(fill, pathId) {
+        if (!fill || typeof fill !== 'object') {
+            this.addError(`${pathId}: Fill must be an object`);
+            return;
+        }
+        
+        // Validate color
+        if (fill.color) {
+            this.validateColor(fill.color, `${pathId}.fill.color`);
+        }
+        
+        // Validate fill rule
+        if (fill.rule && !['nonzero', 'evenodd'].includes(fill.rule)) {
+            this.addError(`${pathId}: Invalid fill rule: ${fill.rule}`);
+        }
+    }
+    
+    /**
+     * Validate stroke style
+     */
+    validateStrokeStyle(stroke, pathId) {
+        if (!stroke || typeof stroke !== 'object') {
+            this.addError(`${pathId}: Stroke must be an object`);
+            return;
+        }
+        
+        // Validate color
+        if (stroke.color) {
+            this.validateColor(stroke.color, `${pathId}.stroke.color`);
+        }
+        
+        // Validate width
+        if ('width' in stroke) {
+            if (typeof stroke.width !== 'number' || 
+                stroke.width < this.validationRules.styles.stroke.minWidth || 
+                stroke.width > this.validationRules.styles.stroke.maxWidth) {
+                this.addError(`${pathId}: Invalid stroke width: ${stroke.width}`);
+            }
+        }
+    }
+    
+    /**
+     * Validate color array [r, g, b, a]
+     */
+    validateColor(color, colorId) {
+        if (!Array.isArray(color) || color.length !== 4) {
+            this.addError(`${colorId}: Color must be array of 4 numbers [r,g,b,a]`);
+            return;
+        }
+        
+        color.forEach((component, i) => {
+            if (typeof component !== 'number' || component < 0 || component > 1) {
+                this.addError(`${colorId}: Invalid color component ${i}: ${component}`);
+            }
+        });
+    }
+    
+    /**
+     * Validate transform matrix
+     */
+    validateTransform(transform, pathId) {
+        if (!Array.isArray(transform) || transform.length !== 6) {
+            this.addError(`${pathId}: Transform must be array of 6 numbers`);
+            return;
+        }
+        
+        transform.forEach((value, i) => {
+            if (typeof value !== 'number' || !isFinite(value)) {
+                this.addError(`${pathId}: Invalid transform value at index ${i}: ${value}`);
+            }
+        });
+    }
+    
+    /**
+     * Validate layer
+     */
+    validateLayer(layer, index) {
+        const layerId = `Layer[${index}]`;
+        
+        if (!layer || typeof layer !== 'object') {
+            this.addError(`${layerId}: Must be an object`);
+            return;
+        }
+        
+        // Check required fields
+        const requiredFields = ['id', 'name', 'visible'];
+        requiredFields.forEach(field => {
+            if (!(field in layer)) {
+                this.addError(`${layerId}: Missing required field: ${field}`);
+            }
+        });
+        
+        // Validate types
+        if (layer.id && typeof layer.id !== 'string') {
+            this.addError(`${layerId}: ID must be a string`);
+        }
+        
+        if (layer.name && typeof layer.name !== 'string') {
+            this.addError(`${layerId}: Name must be a string`);
+        }
+        
+        if ('visible' in layer && typeof layer.visible !== 'boolean') {
+            this.addError(`${layerId}: Visible must be a boolean`);
+        }
+        
+        if ('locked' in layer && typeof layer.locked !== 'boolean') {
+            this.addError(`${layerId}: Locked must be a boolean`);
+        }
+        
+        if ('opacity' in layer && 
+            (typeof layer.opacity !== 'number' || layer.opacity < 0 || layer.opacity > 1)) {
+            this.addError(`${layerId}: Invalid opacity: ${layer.opacity}`);
+        }
+    }
+    
+    /**
+     * Add error to results
+     */
+    addError(message) {
+        this.errors.push({
+            type: 'error',
+            message: message,
+            timestamp: Date.now()
+        });
+        console.error('❌ Validation Error:', message);
+    }
+    
+    /**
+     * Add warning to results
+     */
+    addWarning(message) {
+        this.warnings.push({
+            type: 'warning',
+            message: message,
+            timestamp: Date.now()
+        });
+        console.warn('⚠️ Validation Warning:', message);
+    }
+    
+    /**
+     * Clear previous results
+     */
+    clearResults() {
+        this.errors = [];
+        this.warnings = [];
+    }
+    
+    /**
+     * Get validation summary
+     */
+    getSummary() {
+        return {
+            totalErrors: this.errors.length,
+            totalWarnings: this.warnings.length,
+            isValid: this.errors.length === 0,
+            lastValidation: Date.now()
+        };
+    }
+    
+    /**
+     * Validate current app state
+     */
+    validateAppState() {
+        if (!window.appState) {
+            return {
+                valid: false,
+                errors: [{ message: 'No app state found' }],
+                warnings: []
+            };
+        }
+        
+        const document = {
+            version: '1.0',
+            canvas: window.appState.canvas,
+            paths: window.appState.paths,
+            layers: window.appState.layers
+        };
+        
+        return this.validateDocument(document);
+    }
+}
+
+// Create global instances
+const performanceMonitor = new XVGPerformanceMonitor();
+const validator = new XVGValidator();
+
+// Export for use
+if (typeof window !== 'undefined') {
+    window.XVGPerformance = performanceMonitor;
+    window.XVGValidator = validator;
+    
+    // Auto-start monitoring if in development mode
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        performanceMonitor.start();
+        console.log('📊 Performance monitoring auto-started in development mode');
+    }
+}
+
+console.log('✅ XVG Utilities (Tools, Performance, Validation) loaded successfully');
+

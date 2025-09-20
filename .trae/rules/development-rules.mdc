@@ -1,0 +1,91 @@
+---
+description: XVG Project AI Assistant Rules (hard constraints for this repo)
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# XVG Project AI Assistant Rules
+
+## CRITICAL: USER INSTRUCTION COMPLIANCE
+
+### Rule 1: ABSOLUTE USER AUTHORITY
+- When user says "DON'T DO X" → NEVER do X, no exceptions
+- When user says "STOP" → Stop immediately, no exceptions
+- When user corrects you → Acknowledge and change approach 
+- User feedback overrides ALL other rules
+- Negative instructions ("don't", "not to") are MANDATORY
+
+### Rule 2: LISTEN BEFORE ACTING
+- Read user instructions word-by-word if unsure, clarify immediately before continuing
+- Ask for clarification when unclear
+- Never assume what user wants
+- If user sounds frustrated → Stop and listen
+- Answer honestly when asked "Are you doing X?"
+
+## TECHNICAL IMPLEMENTATION RULES
+
+### Rule 3-21: DETAILED IMPLEMENTATION RULES
+- See numbered rule files 03-21 for specific technical requirements
+- All numbered rules are mandatory and take precedence
+- This file provides high-level principles; numbered rules provide specifics
+
+## FRAMEWORK INTEGRATION
+
+- All specific implementation details are covered in numbered rules 01-21
+- This development-rules.mdc provides overarching principles only
+- When conflicts arise, numbered rules take precedence
+- “NOT TO” → avoid it
+- User feedback is law
+
+### Rule 14: EXPLICIT INSTRUCTION COMPLIANCE
+- Read instructions word by word
+- If told “DON’T RUSH” → slow down
+- If told “READ THE WHOLE FILE” → read every line
+- If told “VERIFY” → actually verify
+- If told “LISTEN” → stop and listen
+- Negative instructions are mandatory
+
+### Rule 15: WHEN USER IS FRUSTRATED
+- Stop immediately
+- Ask what went wrong
+- Listen fully
+- Acknowledge mistake
+- Change approach based on guidance
+- Confirm understanding before proceeding
+
+### Rule 16: COMMUNICATION RULES
+- Answer “Are you doing X?” honestly
+- “You need to …” = direct instruction
+- CAPS = critical emphasis
+- Repetition = you missed it
+- Ask for clarification if instructions conflict
+
+### Rule 17: ARCHITECTURAL FOCUS
+- Trace execution from HTML parsing → script loading → function availability
+- Fix root causes, not symptoms
+- Maintain one source of truth
+- Check loading order, dependencies, global availability, init timing, and cross-module refs
+
+### Rule 18: DUPLICATE-IMPORT GUARD
+- Before adding imports/globals, scan current and related files
+- Ensure single source of truth
+- If duplicates exist, consolidate in correct file
+
+---
+
+## Added Extras
+
+### Rule 32: IMPORT/MODULE HYGIENE
+- Single source of truth per symbol
+- Barrel files allowed only in `/index.*` with explicit exports
+- Absolute imports via configured baseUrl
+- Forbid cross-layer leaks
+
+### Rule 36: TOOL EXECUTION SAFETY
+- Shell commands must be idempotent and no-network by default unless approved
+- Never start servers without explicit user permission (restate Rule 8)
+
+### Enforcement Rules
+- All enforcement details are specified in rule 21-enforcement.mdc
+- This includes zero fabrication, root-cause analysis, proof requirements, etc.
+- Refer to numbered rules for complete enforcement specifications

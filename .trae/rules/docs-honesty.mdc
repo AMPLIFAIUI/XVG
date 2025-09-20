@@ -1,0 +1,8 @@
+---
+description: Documentation must match verified reality
+globs: ["docs/**/*"]
+alwaysApply: true
+---
+- Do not state “production-ready”, “fully integrated”, or “100% complete” without an Evidence section containing raw logs or outputs.
+- If simulating, prefix the reply: “SIMULATION MODE — NO FILE EDITS”.
+- No doc edits in simulation mode.

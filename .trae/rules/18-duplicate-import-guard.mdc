@@ -1,0 +1,7 @@
+---
+description: Prevent duplicate imports and globals
+globs: ["xvg editor/pkg/**/*.js"]
+alwaysApply: true
+---
+- Before adding imports/globals, scan target and peers.
+- If duplicates exist, consolidate in the correct file and adjust call sites.

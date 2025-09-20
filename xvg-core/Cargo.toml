@@ -14,6 +14,12 @@ anyhow = { version = "1", default-features = false }
 crc32fast = "1.3"
 zstd = { version = "0.13", optional = true }
 
+# SVG import (optional)
+usvg = { version = "0.36", optional = true, features = ["text"] }
+resvg = { version = "0.36", optional = true, features = ["text"] }
+tiny-skia = { version = "0.11", optional = true }
+tiny-skia-path = { version = "0.11", optional = true }
+
 # GPU Shader Execution dependencies
 wgpu = { version = "0.16", optional = true }
 bytemuck = { version = "1.14", optional = true, features = ["derive"] }
@@ -27,8 +33,11 @@ wasm-bindgen = { version = "0.2", optional = true }
 js-sys = { version = "0.3", optional = true }
 web-sys = { version = "0.3", features = ["console"], optional = true }
 
+# Networking support for CRDT collaboration
+tokio = { version = "1.0", optional = true, features = ["full"] }
+
 [features]
-default = ["std", "compression"]
+default = ["std", "compression", "gpu", "3d", "svg"]
 std = ["serde/std", "anyhow/std"]
 alloc = ["serde/alloc"]   # for no_std targets
 serde = ["dep:serde", "dep:bincode", "dep:serde_json"]
@@ -36,3 +45,5 @@ compression = ["dep:zstd"]
 wasm = ["dep:wasm-bindgen", "dep:js-sys", "dep:web-sys", "serde"]
 gpu = ["dep:wgpu", "dep:bytemuck", "dep:half"]
 3d = ["dep:lyon"] 
+svg = ["dep:usvg", "dep:resvg", "dep:tiny-skia", "dep:tiny-skia-path"]
+networking = ["dep:tokio"]

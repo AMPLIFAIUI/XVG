@@ -3,6 +3,13 @@ use alloc::vec::Vec;
 use alloc::string::String;
 use std::collections::HashMap;
 
+#[cfg(feature = "networking")]
+use tokio::sync::mpsc;
+#[cfg(feature = "networking")]
+use tokio::net::{TcpListener, TcpStream};
+#[cfg(feature = "networking")]
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
 /// CRDT Engine implementing real-time collaboration with operational transformation
 /// According to XVG specification: CRDT-based collaboration with Lamport timestamps
 #[derive(Clone)]
@@ -32,6 +39,10 @@ pub struct CRDTEngine {
     /// Performance settings
     max_operation_log: usize,
     batch_size: usize,
+    
+    /// Advanced networking
+    #[cfg(feature = "networking")]
+    network_manager: Option<NetworkSyncManager>,
 }
 
 /// Document state managed by CRDT
@@ -67,7 +78,7 @@ pub enum CRDOpType {
 }
 
 /// CRDT operation with Lamport timestamp
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CRDTOperation {
     pub id: u64,
     pub author_id: u16,
@@ -125,6 +136,8 @@ impl CRDTEngine {
             conflict_resolution: ConflictResolutionStrategy::LastWriteWins,
             max_operation_log: 10000,
             batch_size: 100,
+            #[cfg(feature = "networking")]
+            network_manager: None,
         }
     }
 
@@ -464,6 +477,7 @@ impl CRDTEngine {
             tf: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0], // Identity transform
             style: PathStyle::default(),
             original_svg: None,
+            layer_id: None,
         })
     }
 
@@ -487,6 +501,7 @@ impl CRDTEngine {
             tf: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0], // Identity transform
             style: PathStyle::default(),
             original_svg: None,
+            layer_id: None,
         }))
     }
 
@@ -522,7 +537,7 @@ impl CRDTEngine {
         Ok((path_id, [x, y]))
     }
 
-    fn serialize_style_update(&self, path_id: u64, style: &PathStyle) -> Vec<u8> {
+    fn serialize_style_update(&self, path_id: u64, _style: &PathStyle) -> Vec<u8> {
         let mut data = Vec::new();
         data.extend_from_slice(&path_id.to_le_bytes());
         // In a real implementation, you'd serialize the style properly
@@ -639,14 +654,58 @@ impl CRDTEngine {
 
     /// Translate path by given offset
     fn translate_path(&self, path_record: &mut PathRecord, translation: [f32; 2]) {
-        // In a real implementation, you'd parse the path data and apply the translation
-        // For now, this is a placeholder
+        // Parse the path data and apply translation to each point
+        let data = &mut path_record.data;
+        if data.len() < 8 { // Need at least 2 f32 values (x, y)
+            return;
+        }
+        
+        let mut offset = 0;
+        while offset + 7 < data.len() {
+            let x = f32::from_le_bytes([data[offset], data[offset + 1], data[offset + 2], data[offset + 3]]);
+            let y = f32::from_le_bytes([data[offset + 4], data[offset + 5], data[offset + 6], data[offset + 7]]);
+            
+            // Apply translation
+            let new_x = x + translation[0];
+            let new_y = y + translation[1];
+            
+            // Write back translated coordinates
+            let x_bytes = new_x.to_le_bytes();
+            let y_bytes = new_y.to_le_bytes();
+            
+            data[offset..offset + 4].copy_from_slice(&x_bytes);
+            data[offset + 4..offset + 8].copy_from_slice(&y_bytes);
+            
+            offset += 8;
+        }
     }
 
     /// Static version of translate_path to avoid borrow checker issues
     fn translate_path_static(path_record: &mut PathRecord, translation: [f32; 2]) {
-        // In a real implementation, you'd parse the path data and apply the translation
-        // For now, this is a placeholder
+        // Parse the path data and apply translation to each point
+        let data = &mut path_record.data;
+        if data.len() < 8 { // Need at least 2 f32 values (x, y)
+            return;
+        }
+        
+        let mut offset = 0;
+        while offset + 7 < data.len() {
+            let x = f32::from_le_bytes([data[offset], data[offset + 1], data[offset + 2], data[offset + 3]]);
+            let y = f32::from_le_bytes([data[offset + 4], data[offset + 5], data[offset + 6], data[offset + 7]]);
+            
+            // Apply translation
+            let new_x = x + translation[0];
+            let new_y = y + translation[1];
+            
+            // Write back translated coordinates
+            let x_bytes = new_x.to_le_bytes();
+            let y_bytes = new_y.to_le_bytes();
+            
+            data[offset..offset + 4].copy_from_slice(&x_bytes);
+            data[offset + 4..offset + 8].copy_from_slice(&y_bytes);
+            
+            offset += 8;
+        }
     }
 
     /// Get memory usage
@@ -853,7 +912,7 @@ impl<T: Clone> RGASequence<T> {
     }
 
     /// Find proper insertion index for element based on causal ordering
-    fn find_insertion_index(&self, element: &RGAElement<T>) -> usize {
+    fn find_insertion_index(&self, _element: &RGAElement<T>) -> usize {
         // Simple insertion at end for now
         // In a full implementation, this would respect the causal ordering
         self.elements.len()
@@ -1019,9 +1078,9 @@ mod tests {
         let mut rga = RGASequence::new();
         
         // Insert elements
-        let id1 = rga.insert(0, "A".to_string(), 100, 1);
-        let id2 = rga.insert(1, "B".to_string(), 200, 1);
-        let id3 = rga.insert(1, "C".to_string(), 150, 1);
+        let _id1 = rga.insert(0, "A".to_string(), 100, 1);
+        let id2 = rga.insert(1, "B".to_string(), 120, 1);
+        let _id3 = rga.insert(1, "C".to_string(), 150, 1);
         
         // Should have ABC order (insertion order preserved)
         let visible = rga.get_visible();
@@ -1066,6 +1125,7 @@ mod tests {
             tf: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
             style: PathStyle::default(),
             original_svg: None,
+            layer_id: None,
         };
         
         let path_id = engine.create_path(path_record);
@@ -1119,12 +1179,13 @@ mod tests {
             tf: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
             style: PathStyle::default(),
             original_svg: None,
+            layer_id: None,
         };
         
         let path_id = engine.create_path(path_record.clone());
         
         // Simulate conflicting update from another author
-        let mut remote_operation = CRDTOperation {
+        let remote_operation = CRDTOperation {
             id: path_id,
             author_id: 2,
             lamport_timestamp: engine.get_lamport_clock() + 10, // Higher timestamp
@@ -1134,6 +1195,7 @@ mod tests {
                 tf: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
                 style: PathStyle::default(),
                 original_svg: None,
+                layer_id: None,
             }),
             dependencies: Vec::new(),
             timestamp: engine.get_current_timestamp() + 100,

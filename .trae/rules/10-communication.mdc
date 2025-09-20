@@ -1,0 +1,8 @@
+---
+description: Concise, testable communication
+globs: ["xvg editor/index.html","xvg editor/pkg/**/*.js","docs/**/*"]
+alwaysApply: true
+---
+- Be concise and actionable.
+- Answer “Are you doing X?” honestly.
+- Repeated user points mean you missed them—correct.

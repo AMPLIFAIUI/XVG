@@ -16,6 +16,8 @@ enum Command {
     Convert { svg: String, out: String },
     /// Rasterize XVG → PNG
     Raster { xvg: String, w: u32, h: u32, out: String },
+    /// Emit to a standard format by extension (SVG/PNG)
+    Emit { xvg: String, out: String },
     // … more subcommands
 }
 
@@ -33,6 +35,23 @@ fn main() -> anyhow::Result<()> {
             let file = File::decode(&std::fs::read(xvg)?)?;
             let png = xvg_to_png(&file, w, h)?;
             std::fs::write(out, png)?;
+        }
+        Command::Emit { xvg, out } => {
+            let file = File::decode(&std::fs::read(&xvg)?)?;
+            match std::path::Path::new(&out).extension().and_then(|s| s.to_str()).unwrap_or("").to_ascii_lowercase().as_str() {
+                "svg" => {
+                    let svg = xvg_core::file_to_svg(&file);
+                    std::fs::write(out, svg.as_bytes())?;
+                }
+                "png" => {
+                    // default size from header
+                    let w = file.header.width as u32;
+                    let h = file.header.height as u32;
+                    let png = xvg_to_png(&file, w.max(1), h.max(1))?;
+                    std::fs::write(out, png)?;
+                }
+                other => anyhow::bail!("unsupported extension: {} (use .svg or .png)", other),
+            }
         }
     }
     Ok(())
@@ -84,7 +103,7 @@ use tiny_skia_path::PathSegment;
                 }
             }
 
-            file.paths.push(PathRecord { data, tf: [1.0,0.0,0.0,1.0,0.0,0.0], style, original_svg: None });
+            file.paths.push(PathRecord { data, tf: [1.0,0.0,0.0,1.0,0.0,0.0], style, original_svg: None, layer_id: None });
         }
     }
     Ok(file)

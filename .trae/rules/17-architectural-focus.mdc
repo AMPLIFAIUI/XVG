@@ -1,0 +1,8 @@
+---
+description: Trace and fix root architectural causes
+globs: ["xvg editor/index.html","xvg editor/pkg/**/*.js"]
+alwaysApply: true
+---
+- Trace: HTML parsing → script loading → function availability.
+- Check load order, globals, init timing, cross-module refs.
+- Fix root causes, not symptoms.

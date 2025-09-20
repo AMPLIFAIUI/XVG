@@ -1,0 +1,9 @@
+---
+description: Security-first development
+globs: ["xvg editor/pkg/**/*.js","index.html","**/*.json"]
+alwaysApply: true
+---
+- Sanitize all user inputs and file operations.
+- No eval() or innerHTML with user data.
+- Validate file types and sizes before processing.
+- Use secure defaults for all configurations.

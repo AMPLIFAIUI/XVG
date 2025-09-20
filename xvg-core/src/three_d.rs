@@ -481,15 +481,28 @@ impl Scene3DEngine {
     }
 
     /// Extract outline points from path record
-    fn extract_path_outline(&self, _path: &PathRecord) -> anyhow::Result<Vec<[f32; 2]>> {
-        // For now, return a simple test shape
-        // In the real implementation, this would parse the path data
-        Ok(vec![
-            [-2.0, -2.0],
-            [2.0, -2.0],
-            [2.0, 2.0],
-            [-2.0, 2.0],
-        ])
+    fn extract_path_outline(&self, path: &PathRecord) -> anyhow::Result<Vec<[f32; 2]>> {
+        let mut points = Vec::new();
+        
+        // Parse the path data which is stored as little-endian f32 pairs
+        let data = &path.data;
+        if data.len() < 8 { // Need at least 2 f32 values (x, y)
+            return Err(anyhow::anyhow!("Path data too short for triangulation"));
+        }
+        
+        let mut offset = 0;
+        while offset + 7 < data.len() {
+            let x = f32::from_le_bytes([data[offset], data[offset + 1], data[offset + 2], data[offset + 3]]);
+            let y = f32::from_le_bytes([data[offset + 4], data[offset + 5], data[offset + 6], data[offset + 7]]);
+            points.push([x, y]);
+            offset += 8;
+        }
+        
+        if points.is_empty() {
+            return Err(anyhow::anyhow!("No valid points extracted from path"));
+        }
+        
+        Ok(points)
     }
 
     /// Push matrix onto stack

@@ -1,0 +1,17 @@
+---
+description: Anti-BS enforcement pack
+globs: ["xvg editor/index.html","xvg editor/pkg/**/*.js","xvg editor/styles.css","docs/**/*"]
+alwaysApply: true
+---
+- Zero Fabrication: no claims without pasted proof.
+- Root-Cause-First: no patch before a stated hypothesis and repro.
+- Triple-Pass Issue Hunt: list → expand → refine to core cause.
+- Plan-Then-Edit: scope, risk, rollback; then diff + test mapping.
+- Proof Or It Didn’t Happen: paste logs/exit codes for checks.
+- No Cargo-Cult: explain why any snippet fits this codebase.
+- No Silent Degradation: no commenting-out to “get green”.
+- Tight Blast Radius: smallest viable diff or split into steps.
+- Duplicate/Drift Check: consolidate symbols before adding new ones.
+- Honesty About Limits: if blocked, state it and stop.
+- Rollback Ready: provide inverse patch path.
+- Ban Speculative Fixes: only changes tied to hypothesis and tests.

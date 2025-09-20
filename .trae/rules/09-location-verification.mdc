@@ -1,0 +1,8 @@
+---
+description: Verify file locations and roles
+globs: ["xvg editor/index.html","xvg editor/pkg/**/*.js"]
+alwaysApply: true
+---
+- Confirm component locations by search.
+- Distinguish utilities vs core.
+- Read files to verify purpose before editing.

@@ -1,0 +1,15 @@
+{
+  "name": "xvg-wasm",
+  "type": "module",
+  "version": "1.0.0",
+  "files": [
+    "xvg_wasm_bg.wasm",
+    "xvg_wasm.js",
+    "xvg_wasm.d.ts"
+  ],
+  "main": "xvg_wasm.js",
+  "types": "xvg_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

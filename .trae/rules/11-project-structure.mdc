@@ -1,0 +1,18 @@
+---
+Uncaught TypeError: window.XVGSystem.markModified is not a function
+    at BrushTool.finishDrawing (xvg-tools.js?v=1756637555:1243:24)
+    at window.handleToolMouseUp (xvg-tools.js?v=1756637555:1461:85)
+    at HTMLCanvasElement.handleMouseUp (xvg-core.js?v=1756637555:114:40)
+finishDrawing @ xvg-tools.js?v=1756637555:1243
+window.handleToolMouseUp @ xvg-tools.js?v=1756637555:1461
+handleMouseUp @ xvg-core.js?v=1756637555:114
+xvg-tools.js?v=1756637555:1415 [Tools] Mouse down, current tool: brush right-click: false tools ready: true
+xvg-tools.js?v=1756637555:1243 Uncaught TypeError: window.XVGSystem.markModified is not a function
+    at BrushTool.finishDrawing (xvg-tools.js?v=1756637555:1243:24)
+    at window.handleToolMouseUp (xvg-tools.js?v=1756637555:1461:85)
+    at HTMLCanvasElement.handleMouseUp (xvg-core.js?v=1756637555:114:40)description: Respect existing architecture
+globs: ["xvg editor/pkg/**/*.js","xvg editor/index.html"]
+alwaysApply: true
+---
+- Follow patterns in “/xvg editor/pkg/”.
+- Extend, don’t rebuild. Maintain one source of truth.

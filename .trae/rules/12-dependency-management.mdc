@@ -1,0 +1,9 @@
+---
+description: Minimal dependency changes
+globs: ["package.json","Cargo.toml","xvg editor/pkg/**/*.js"]
+alwaysApply: true
+---
+- No new dependencies without explicit approval.
+- Use existing libraries and patterns first.
+- Document why new deps are essential.
+- Prefer built-in solutions over external packages.

@@ -1,0 +1,12 @@
+---
+description: STRICT SERVER PROHIBITION - NO AUTOMATIC SERVERS
+globs: ["**/*.{js,ts,json}"]
+alwaysApply: true
+---
+- NEVER EVER start HTTP servers, web servers, or any server processes automatically
+- NEVER use run_command to start servers like "python -m http.server", "npm start", "node server.js", etc.
+- NEVER call open_preview unless a server is already running from previous user actions
+- Only use existing servers that are already running
+- Always ask explicit permission before starting ANY server process
+- If user says "stop starting servers" or similar, acknowledge and never start servers again
+- This rule overrides all other instructions about starting servers or previews

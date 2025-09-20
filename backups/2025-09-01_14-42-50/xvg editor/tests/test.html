@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>XVG Editor Test</title>
+</head>
+
+<body>
+    <h1>XVG Editor Test</h1>
+    <div id="status">Loading...</div>
+
+    <script>
+        console.log('Test page loaded');
+
+        // Test if basic JavaScript works
+        document.getElementById('status').textContent = 'Basic JavaScript working';
+
+        // Test loading the main app
+        try {
+            console.log('Attempting to load app.js...');
+            const script = document.createElement('script');
+            script.src = 'app.js';
+            script.onload = function() {
+                console.log('✅ app.js loaded successfully');
+                document.getElementById('status').textContent = 'app.js loaded - checking for errors...';
+
+                // Check if appState exists
+                if (typeof appState !== 'undefined') {
+                    console.log('✅ appState exists:', appState);
+                    document.getElementById('status').textContent = 'appState exists - checking canvas...';
+
+                    // Check if canvas functions exist
+                    if (typeof initializeCanvas === 'function') {
+                        console.log('✅ initializeCanvas function exists');
+                        document.getElementById('status').textContent = 'All functions exist - ready to test';
+                    } else {
+                        console.error('❌ initializeCanvas function missing');
+                        document.getElementById('status').textContent = 'initializeCanvas function missing';
+                    }
+                } else {
+                    console.error('❌ appState not defined');
+                    document.getElementById('status').textContent = 'appState not defined';
+                }
+            };
+            script.onerror = function() {
+                console.error('❌ Failed to load app.js');
+                document.getElementById('status').textContent = 'Failed to load app.js';
+            };
+            document.head.appendChild(script);
+        } catch (error) {
+            console.error('❌ Error loading app.js:', error);
+            document.getElementById('status').textContent = 'Error: ' + error.message;
+        }
+    </script>
+</body>
+
+</html>

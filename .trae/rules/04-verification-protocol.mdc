@@ -1,0 +1,8 @@
+---
+description: Verify after every change
+globs: ["xvg editor/index.html","xvg editor/pkg/**/*.js","xvg editor/styles.css","docs/**/*"]
+alwaysApply: true
+---
+- After edits: run checks and read all output.
+- Do not claim success without pasted evidence.
+- If unknown, state “unknown” and collect data.

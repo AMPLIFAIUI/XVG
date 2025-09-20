@@ -1,0 +1,9 @@
+---
+description: Performance-conscious development
+globs: ["xvg editor/pkg/**/*.js","index.html","xvg editor/styles.css"]
+alwaysApply: true
+---
+- Avoid unnecessary DOM queries and manipulations.
+- Cache expensive calculations and lookups.
+- Use efficient algorithms and data structures.
+- Profile before optimizing, measure impact.

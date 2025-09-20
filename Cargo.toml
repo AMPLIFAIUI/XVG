@@ -3,7 +3,7 @@ members = [
     "xvg-core",
     "xvg-cli", 
     "xvg-py",
-    "xvg-desktop"
+    "xvg-ffi"
 ]
 exclude = [
     "xvg-wasm"

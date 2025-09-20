@@ -1,0 +1,8 @@
+---
+description: Read complete files first
+globs: ["xvg editor/index.html","xvg editor/pkg/**/*.js","xvg editor/styles.css"]
+alwaysApply: true
+---
+- Read entire target files before proposing changes.
+- Quote lines and functions you will modify.
+- No edits based on assumptions or snippets.

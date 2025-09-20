@@ -1,0 +1,13 @@
+---
+description: Preflight gate before any edits
+globs: ["xvg editor/index.html","xvg editor/pkg/**/*.js","xvg editor/styles.css","docs/**/*"]
+alwaysApply: true
+---
+Before editing, reply with:
+1) Task in ≤6 steps.
+2) Exact files you will touch.
+3) Rules you will follow by filename.
+4) Root-cause hypothesis or “unknown”.
+5) Repro steps or what data you will gather.
+6) DoD: minimal diff, no new deps, all checks pass.
+No edits until user approves this preflight.

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XVG Editor Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .error { color: red; }
+        .success { color: green; }
+        .log { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>XVG Editor Debug</h1>
+    <div id="status">Loading...</div>
+    <div id="log"></div>
+    
+    <script>
+        // Debug logging
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log ${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(logEntry);
+            console.log(message);
+        }
+        
+        // Test script loading
+        log('Starting debug test...');
+        
+        try {
+            log('Loading xvg-engine-integration.js...');
+            // Test if the file loads without syntax errors
+            const script1 = document.createElement('script');
+            script1.src = 'xvg-engine-integration.js';
+            script1.onload = () => log('✅ xvg-engine-integration.js loaded successfully', 'success');
+            script1.onerror = (e) => log('❌ Failed to load xvg-engine-integration.js', 'error');
+            document.head.appendChild(script1);
+            
+            script1.onload = () => {
+                log('✅ xvg-engine-integration.js loaded successfully', 'success');
+                
+                // Test if classes are defined
+                setTimeout(() => {
+                    try {
+                        if (typeof XVGEngineIntegration !== 'undefined') {
+                            log('✅ XVGEngineIntegration class is available', 'success');
+                            
+                            // Test if all required classes exist
+                            const requiredClasses = ['SDFEngineProxy', 'ShaderEngineProxy', 'ThreeDEngineProxy', 'CRDTEngineProxy', 'FileEngineProxy'];
+                            let allClassesExist = true;
+                            
+                            requiredClasses.forEach(className => {
+                                try {
+                                    const testInstance = eval(`new ${className}()`);
+                                    log(`✅ ${className} class is available`, 'success');
+                                } catch (e) {
+                                    log(`❌ ${className} class failed: ${e.message}`, 'error');
+                                    allClassesExist = false;
+                                }
+                            });
+                            
+                            if (allClassesExist) {
+                                log('✅ All required classes are available', 'success');
+                                
+                                // Test app.js loading
+                                log('Loading app.js...');
+                                const script2 = document.createElement('script');
+                                script2.src = 'app.js';
+                                script2.onload = () => log('✅ app.js loaded successfully', 'success');
+                                script2.onerror = (e) => log('❌ Failed to load app.js', 'error');
+                                document.head.appendChild(script2);
+                                
+                                script2.onload = () => {
+                                    log('✅ app.js loaded successfully', 'success');
+                                    log('✅ All scripts loaded successfully!', 'success');
+                                    document.getElementById('status').innerHTML = '<span class="success">✅ All scripts loaded successfully!</span>';
+                                };
+                            } else {
+                                log('❌ Some required classes are missing', 'error');
+                                document.getElementById('status').innerHTML = '<span class="error">❌ Some required classes are missing</span>';
+                            }
+                        } else {
+                            log('❌ XVGEngineIntegration class not found', 'error');
+                            document.getElementById('status').innerHTML = '<span class="error">❌ XVGEngineIntegration class not found</span>';
+                        }
+                    } catch (e) {
+                        log(`❌ Error testing classes: ${e.message}`, 'error');
+                        document.getElementById('status').innerHTML = '<span class="error">❌ Error testing classes</span>';
+                    }
+                }, 100);
+            };
+            
+        } catch (e) {
+            log(`❌ Debug test failed: ${e.message}`, 'error');
+            document.getElementById('status').innerHTML = '<span class="error">❌ Debug test failed</span>';
+        }
+        
+        // Global error handler
+        window.addEventListener('error', (e) => {
+            log(`❌ Global error: ${e.message} at ${e.filename}:${e.lineno}`, 'error');
+        });
+        
+        window.addEventListener('unhandledrejection', (e) => {
+            log(`❌ Unhandled promise rejection: ${e.reason}`, 'error');
+        });
+    </script>
+</body>
+</html>

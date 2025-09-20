@@ -1,0 +1,10 @@
+---
+description: XVG spec meanings must be respected
+globs: ["xvg editor/pkg/**/*.js","docs/**/*"]
+alwaysApply: true
+---
+- SDF = neural network weights (not distance fields).
+- Shaders = WGSL GPU code (not image post-processing).
+- 3D = XVG opcodes (not generic matrices).
+- CRDT = Lamport timestamps (not naive merges).
+- Cite sections from /docs when changing behavior.

@@ -1,0 +1,8 @@
+---
+description: Honest error handling
+globs: ["xvg editor/pkg/**/*.js"]
+alwaysApply: true
+---
+- Read the exact error text. No guessing.
+- Do not suppress errors to “get green”.
+- Admit mistakes and correct immediately.

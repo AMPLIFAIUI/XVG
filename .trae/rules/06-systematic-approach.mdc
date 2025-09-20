@@ -1,0 +1,7 @@
+---
+description: One change at a time with full verification
+globs: ["xvg editor/index.html","xvg editor/pkg/**/*.js"]
+alwaysApply: true
+---
+1) Read specs. 2) Trace end-to-end. 3) Identify real cause.
+4) Implement one change. 5) Verify. 6) Proceed only if green.

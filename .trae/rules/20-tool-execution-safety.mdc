@@ -1,0 +1,7 @@
+---
+description: Safe command execution
+globs: ["**/*.{js,ts,json,md}"]
+alwaysApply: true
+---
+- Shell/exec steps must be idempotent and no-network by default unless approved.
+- Never start servers without explicit permission (see 08-server-restrictions).

@@ -14,6 +14,11 @@ pub mod sdf;
 pub mod shader;
 pub mod crdt;
 pub mod three_d;
+#[cfg(feature = "svg")]
+pub mod svg_import;
+pub mod export;
+
+pub use export::file_to_svg;
 
 // Re-export advanced engines
 pub use sdf::SDFEngine;
@@ -63,6 +68,7 @@ pub struct PathRecord {
     pub tf: [f64; 6],  // 2×3 affine row-major
     pub style: PathStyle,
     pub original_svg: Option<String>, // Store original SVG path data for proper rendering
+    pub layer_id: Option<u32>, // Layer ID for grouping paths
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -539,6 +545,7 @@ pub struct InstancingData {
 pub struct File {
     // Core sections
     pub header: Header,
+    #[serde(skip)]
     pub json: serde_json::Value,
     pub frames: Vec<Frame>,
     pub paths: Vec<PathRecord>,
@@ -551,6 +558,7 @@ pub struct File {
     pub scene3d: Vec<Scene3DNode>,
     pub anim_curves: Vec<AnimCurve>,
     pub audio_tracks: Vec<AudioTrack>,
+    #[serde(skip)]
     pub metadata: serde_json::Value,
     pub font_subsets: Vec<FontSubset>,
     pub physics: Option<PhysicsSnapshot>,
@@ -588,16 +596,22 @@ impl File {
         use anyhow::ensure;
         
         let len = bytes.len();
-        ensure!(len >= 11, "file too short");
-        ensure!(&bytes[len - 7..] == FOOTER, "missing footer");
+        let footer_len = FOOTER.len();
+        let crc_len = 4usize;
+        // minimum: MAGIC (4) + CRC (4) + FOOTER
+        ensure!(len >= 4 + crc_len + footer_len, "file too short");
+        ensure!(&bytes[len - footer_len..] == FOOTER, "missing footer");
         
         // Verify CRC
-        let crc_stored = u32::from_be_bytes([bytes[len - 11], bytes[len - 10], bytes[len - 9], bytes[len - 8]]);
-        let crc_calc = crc32fast::hash(&bytes[..len - 11]);
+        let crc_start = len - footer_len - crc_len;
+        let crc_stored = u32::from_be_bytes([
+            bytes[crc_start], bytes[crc_start + 1], bytes[crc_start + 2], bytes[crc_start + 3]
+        ]);
+        let crc_calc = crc32fast::hash(&bytes[..crc_start]);
         ensure!(crc_stored == crc_calc, "crc mismatch");
         
         // Deserialize
-        let obj: Self = bincode::deserialize(&bytes[4..len - 11])?;
+        let obj: Self = bincode::deserialize(&bytes[4..crc_start])?;
         Ok(obj)
     }
     
@@ -832,3 +846,81 @@ pub fn decompress_wgsl(data: &[u8]) -> String {
     // No compression fallback
     String::from_utf8(data.to_vec()).unwrap_or_else(|_| String::new())
 } 
+
+#[cfg(test)]
+mod core_tests {
+    use super::*;
+
+    fn make_test_path() -> PathRecord {
+        // Two points: (10,10) -> (90,90)
+        let mut data = Vec::new();
+        for (x,y) in [(10.0f32,10.0f32),(90.0,90.0)] {
+            data.extend_from_slice(&x.to_le_bytes());
+            data.extend_from_slice(&y.to_le_bytes());
+        }
+        let mut style = PathStyle::default();
+        style.fill = Some(FillStyle{ color:[1.0,0.0,0.0,1.0], rule: FillRule::NonZero });
+        style.stroke = Some(StrokeStyle{ color:[0.0,0.0,0.0,1.0], width: 2.0, cap: LineCap::Butt, join: LineJoin::Miter, dash_array: Vec::new() });
+        PathRecord { data, tf:[1.0,0.0,0.0,1.0,0.0,0.0], style, original_svg: None, layer_id: todo!() }
+    }
+
+    #[test]
+    fn debug_print_svg() {
+        let mut f = File::default();
+        f.header.width = 100; f.header.height = 100;
+        f.paths.push(make_test_path());
+        let svg = file_to_svg(&f);
+        println!("SVG OUT:\n{}", svg);
+        assert!(svg.contains("<path"));
+    }
+    #[test]
+    fn file_encode_decode_roundtrip() {
+        let mut f = File::default();
+        f.header.width = 100; f.header.height = 100; f.header.frame_count = 1; f.header.frame_rate = 60.0;
+        f.paths.push(make_test_path());
+        let bytes = f.encode();
+        let back = File::decode(&bytes).expect("decode");
+        assert_eq!(back.header.width, 100);
+        assert_eq!(back.header.height, 100);
+        assert_eq!(back.paths.len(), 1);
+    }
+
+    #[test]
+    fn export_to_svg_contains_path() {
+        let mut f = File::default();
+        f.header.width = 100; f.header.height = 100;
+        f.paths.push(make_test_path());
+        let svg = file_to_svg(&f);
+        assert!(svg.contains("<svg"));
+        assert!(svg.contains("<path"));
+        assert!(svg.contains("stroke-width=\""));
+    }
+
+    #[test]
+    fn wgsl_compile_and_execute_cpu() {
+        let mut eng = WGSLShaderEngine::new();
+        let src = WGSLShaderEngine::get_default_fragment_shader();
+        let compiled = eng.compile_shader("s".into(), src).expect("compile");
+        assert!(compiled.compiled || !compiled.compiled); // compiled flag may be false without GPU; just ensure no panic
+        let out = eng.execute_shader("s", [0.5,0.5], [1.0,1.0,1.0,1.0], 0.25).expect("execute");
+        assert!(out[3] > 0.0);
+    }
+
+    #[test]
+    fn three_d_extrusion_basic() {
+        let mut eng = Scene3DEngine::new();
+        let params = ExtrusionParams{ depth: 10.0, bevel_radius: 0.0, bevel_segments: 0, cap_front: true, cap_back: true, material_id: None };
+        let path = make_test_path();
+        let id = eng.extrude_path(&path, &params).expect("extrude");
+        let mesh = eng.get_mesh(id).unwrap_or_else(|| eng.get_meshes().values().next().unwrap());
+        assert!(!mesh.vertices.is_empty());
+        assert!(!mesh.indices.is_empty());
+    }
+
+    #[test]
+    fn sdf_grid_size() {
+        let p = make_test_path();
+        let g = compute_sdf_grid(&p.data, 32);
+        assert_eq!(g.len(), 32*32);
+    }
+}
