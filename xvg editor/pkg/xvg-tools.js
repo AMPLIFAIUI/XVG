@@ -3301,260 +3301,7 @@ window.getEraserRadius = function() {
   return 20; // Default radius
 };
 
-// Tool event routing functions
-window.handleToolMouseDown = function(x, y, event) {
-  if (!window.XVGSystem || !window.XVGSystem.tools) return;
 
-  const tool = window.XVGSystem.appState.currentTool;
-  const point = { x: x, y: y };
-
-  console.log(`[ToolEvent] MouseDown on ${tool} at (${x}, ${y})`);
-
-  switch (tool) {
-    case 'select':
-      if (window.XVGSystem.tools.selection && window.XVGSystem.tools.selection.startSelection) {
-        window.XVGSystem.tools.selection.startSelection(point, event.button === 2);
-      }
-      break;
-
-    case 'pan':
-      if (window.XVGSystem.tools.pan && window.XVGSystem.tools.pan.startPan) {
-        window.XVGSystem.tools.pan.startPan(point);
-      }
-      break;
-
-    case 'pen':
-      if (window.XVGSystem.tools.pen && window.XVGSystem.tools.pen.startDrawing) {
-        window.XVGSystem.tools.pen.startDrawing(point);
-      }
-      break;
-
-    case 'eraser':
-      if (window.XVGSystem.tools.eraser && window.XVGSystem.tools.eraser.startErasing) {
-        console.log('[ToolEvent] Starting eraser at:', point);
-        window.XVGSystem.tools.eraser.startErasing(point);
-      }
-      break;
-
-    case 'brush':
-      if (window.XVGSystem.tools.brush && window.XVGSystem.tools.brush.startDrawing) {
-        window.XVGSystem.tools.brush.startDrawing(point);
-      }
-      break;
-
-    case 'rectangle':
-      if (window.XVGSystem.tools.rectangle && window.XVGSystem.tools.rectangle.startDrawing) {
-        window.XVGSystem.tools.rectangle.startDrawing(point);
-      }
-      break;
-
-    case 'circle':
-      if (window.XVGSystem.tools.circle && window.XVGSystem.tools.circle.startDrawing) {
-        window.XVGSystem.tools.circle.startDrawing(point);
-      }
-      break;
-
-    case 'line':
-      if (window.XVGSystem.tools.line && window.XVGSystem.tools.line.startDrawing) {
-        window.XVGSystem.tools.line.startDrawing(point);
-      }
-      break;
-
-    case 'text':
-      if (window.XVGSystem.tools.text && window.XVGSystem.tools.text.startDrawing) {
-        window.XVGSystem.tools.text.startDrawing(point);
-      }
-      break;
-
-    case 'brush':
-      if (window.XVGSystem.tools.brush && window.XVGSystem.tools.brush.startDrawing) {
-        window.XVGSystem.tools.brush.startDrawing(point);
-      }
-      break;
-
-    case 'eyedropper':
-      if (window.XVGSystem.tools.eyedropper && window.XVGSystem.tools.eyedropper.pickColor) {
-        window.XVGSystem.tools.eyedropper.pickColor(point);
-      }
-      break;
-
-    case 'bgremover':
-      if (window.XVGSystem.tools.bgremover && window.XVGSystem.tools.bgremover.startProcessing) {
-        window.XVGSystem.tools.bgremover.startProcessing(point);
-      }
-      break;
-  }
-};
-
-window.handleToolMouseMove = function(x, y, event) {
-  if (!window.XVGSystem || !window.XVGSystem.tools) return;
-
-  const tool = window.XVGSystem.appState.currentTool;
-  const point = { x: x, y: y };
-
-  switch (tool) {
-    case 'select':
-      if (window.XVGSystem.tools.selection && window.XVGSystem.tools.selection.updateSelection) {
-        window.XVGSystem.tools.selection.updateSelection(point);
-      }
-      break;
-
-    case 'pan':
-      if (window.XVGSystem.tools.pan && window.XVGSystem.tools.pan.updatePan) {
-        window.XVGSystem.tools.pan.updatePan(point);
-      }
-      break;
-
-    case 'pen':
-      if (window.XVGSystem.tools.pen && window.XVGSystem.tools.pen.updateDrawing) {
-        window.XVGSystem.tools.pen.updateDrawing(point);
-      }
-      break;
-
-    case 'eraser':
-      if (window.XVGSystem.tools.eraser && window.XVGSystem.tools.eraser.updateErasing) {
-        window.XVGSystem.tools.eraser.updateErasing(point);
-      }
-      break;
-
-    case 'brush':
-      if (window.XVGSystem.tools.brush && window.XVGSystem.tools.brush.updateDrawing) {
-        window.XVGSystem.tools.brush.updateDrawing(point);
-      }
-      break;
-
-    case 'rectangle':
-      if (window.XVGSystem.tools.rectangle && window.XVGSystem.tools.rectangle.updateDrawing) {
-        window.XVGSystem.tools.rectangle.updateDrawing(point);
-      }
-      break;
-
-    case 'circle':
-      if (window.XVGSystem.tools.circle && window.XVGSystem.tools.circle.updateDrawing) {
-        window.XVGSystem.tools.circle.updateDrawing(point);
-      }
-      break;
-
-    case 'line':
-      if (window.XVGSystem.tools.line && window.XVGSystem.tools.line.updateDrawing) {
-        window.XVGSystem.tools.line.updateDrawing(point);
-      }
-      break;
-
-    case 'text':
-      if (window.XVGSystem.tools.text && window.XVGSystem.tools.text.updateDrawing) {
-        window.XVGSystem.tools.text.updateDrawing(point);
-      }
-      break;
-
-    case 'brush':
-      if (window.XVGSystem.tools.brush && window.XVGSystem.tools.brush.updateDrawing) {
-        window.XVGSystem.tools.brush.updateDrawing(point);
-      }
-      break;
-  }
-};
-
-window.handleToolMouseUp = function(x, y, event) {
-  if (!window.XVGSystem || !window.XVGSystem.tools) return;
-
-  const tool = window.XVGSystem.appState.currentTool;
-  const point = { x: x, y: y };
-
-  console.log(`[ToolEvent] MouseUp on ${tool} at (${x}, ${y})`);
-
-  switch (tool) {
-    case 'select':
-      if (window.XVGSystem.tools.selection && window.XVGSystem.tools.selection.finishSelection) {
-        window.XVGSystem.tools.selection.finishSelection();
-      }
-      break;
-
-    case 'pan':
-      if (window.XVGSystem.tools.pan && window.XVGSystem.tools.pan.finishPan) {
-        window.XVGSystem.tools.pan.finishPan();
-      }
-      break;
-
-    case 'pen':
-      if (window.XVGSystem.tools.pen && window.XVGSystem.tools.pen.finishDrawing) {
-        window.XVGSystem.tools.pen.finishDrawing();
-      }
-      break;
-
-    case 'eraser':
-      if (window.XVGSystem.tools.eraser && window.XVGSystem.tools.eraser.finishErasing) {
-        console.log('[ToolEvent] Finishing eraser operation');
-        window.XVGSystem.tools.eraser.finishErasing();
-      }
-      break;
-
-    case 'brush':
-      if (window.XVGSystem.tools.brush && window.XVGSystem.tools.brush.finishDrawing) {
-        window.XVGSystem.tools.brush.finishDrawing();
-      }
-      break;
-
-    case 'rectangle':
-      if (window.XVGSystem.tools.rectangle && window.XVGSystem.tools.rectangle.finishDrawing) {
-        window.XVGSystem.tools.rectangle.finishDrawing();
-      }
-      break;
-
-    case 'circle':
-      if (window.XVGSystem.tools.circle && window.XVGSystem.tools.circle.finishDrawing) {
-        window.XVGSystem.tools.circle.finishDrawing();
-      }
-      break;
-
-    case 'line':
-      if (window.XVGSystem.tools.line && window.XVGSystem.tools.line.finishDrawing) {
-        window.XVGSystem.tools.line.finishDrawing();
-      }
-      break;
-
-    case 'text':
-      if (window.XVGSystem.tools.text && window.XVGSystem.tools.text.finishDrawing) {
-        window.XVGSystem.tools.text.finishDrawing();
-      }
-      break;
-
-    case 'brush':
-      if (window.XVGSystem.tools.brush && window.XVGSystem.tools.brush.finishDrawing) {
-        window.XVGSystem.tools.brush.finishDrawing();
-      }
-      break;
-  }
-};
-
-window.handleToolMouseLeave = function(event) {
-  // Handle mouse leaving canvas area - finish current operation
-  if (!window.XVGSystem || !window.XVGSystem.tools) return;
-
-  const tool = window.XVGSystem.appState.currentTool;
-
-  switch (tool) {
-    case 'eraser':
-      if (window.XVGSystem.tools.eraser && window.XVGSystem.tools.eraser.finishErasing) {
-        window.XVGSystem.tools.eraser.finishErasing();
-      }
-      break;
-
-    case 'pen':
-      if (window.XVGSystem.tools.pen && window.XVGSystem.tools.pen.finishDrawing) {
-        window.XVGSystem.tools.pen.finishDrawing();
-      }
-      break;
-
-    case 'brush':
-      if (window.XVGSystem.tools.brush && window.XVGSystem.tools.brush.finishDrawing) {
-        window.XVGSystem.tools.brush.finishDrawing();
-      }
-      break;
-
-    // Add other tools that need to finish on mouse leave
-  }
-};
 
 // Tool status function
 window.getCurrentTool = function() {
@@ -3608,12 +3355,12 @@ window.testEraserTool = function() {
 
   // Check if eraser tool exists
   if (!window.XVGSystem?.tools?.eraser) {
-    console.error('[EraserTest] ❌ Eraser tool not found');
+    console.error('[EraserTest] Eraser tool not found');
     return false;
   }
 
   const eraser = window.XVGSystem.tools.eraser;
-  console.log('[EraserTest] ✅ Eraser tool exists');
+  console.log('[EraserTest] Eraser tool exists');
 
   // Test basic properties
   console.log('[EraserTest] Radius:', eraser.getRadius());
@@ -3653,7 +3400,7 @@ window.testEraserTool = function() {
   const completelyCovers = eraser.shouldErasePath(testPath, worldPoint);
   console.log('[EraserTest] Eraser completely covers path:', completelyCovers);
 
-  console.log('[EraserTest] ✅ Eraser tool test completed');
+  console.log('[EraserTest] Eraser tool test completed');
   return true;
 };
 
@@ -3713,7 +3460,7 @@ window.createTestPaths = function() {
     }
   });
 
-  console.log(`[TestPaths] ✅ Created ${paths.length} test paths`);
+  console.log(`[TestPaths] Created ${paths.length} test paths`);
   console.log('[TestPaths] Red square at (200,200), Green at (400,200), Blue at (300,400)');
 
   // Refresh canvas
