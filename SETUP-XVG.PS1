@@ -23,7 +23,7 @@ New-Item -ItemType File -Force -Path ".\Cargo.toml" -Value @"
 [package]
 name = "xvg-core"
 version = "0.1.0"
-edition = "2021"
+edition = "2025"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
