@@ -49,6 +49,7 @@ impl XVGFile {
                 blend_mode: xvg_core::BlendMode::Normal,
             },
             original_svg: None,
+            layer_id: None,
         });
         Ok(())
     }

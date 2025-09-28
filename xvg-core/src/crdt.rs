@@ -42,7 +42,7 @@ pub struct CRDTEngine {
     
     /// Advanced networking
     #[cfg(feature = "networking")]
-    network_manager: Option<NetworkSyncManager>,
+    network_manager: Option<Box<NetworkSyncManager>>,
 }
 
 /// Document state managed by CRDT
@@ -968,7 +968,7 @@ impl<T: Clone + Eq + std::hash::Hash> AWSet<T> {
 /// Network synchronization manager for CRDT operations
 #[derive(Clone)]
 pub struct NetworkSyncManager {
-    engine: CRDTEngine,
+    engine: Box<CRDTEngine>,
     connection_status: ConnectionStatus,
     pending_sync: Vec<CRDTOperation>,
     last_sync_timestamp: u64,
@@ -988,7 +988,7 @@ impl NetworkSyncManager {
     /// Create new network sync manager
     pub fn new(author_id: u16) -> Self {
         Self {
-            engine: CRDTEngine::new(author_id),
+            engine: Box::new(CRDTEngine::new(author_id)),
             connection_status: ConnectionStatus::Disconnected,
             pending_sync: Vec::new(),
             last_sync_timestamp: 0,
