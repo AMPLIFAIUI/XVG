@@ -5,7 +5,7 @@ import init, { XVGSDFEngine, XVGCRDTEngine, XVG3DEngine } from '../pkg/xvg_wasm.
 // The old files rely on global variables like window.XVGSystem and window.XVGUtils.
 // We must load them after the WASM is initialized.
 // import '../pkg/xvg-utilities.js'; // Refactored and no longer needed here
-import { initializeCanvas } from '../pkg/xvg-core.js'; // Import the core initialization function
+import { XVGCore } from '../pkg/xvg-core.js'; // Import the new XVGCore class
 import '../pkg/xvg-tools.js'; // Still global, will be refactored next
 // import { EngineIntegration } from '../pkg/xvg-engine-integration.js'; // Import the refactored class
 
@@ -27,7 +27,8 @@ async function startXVGEditor() {
         window.XVG3DEngine = XVG3DEngine;
         
         // You can now call a global function to start the application, e.g.,
-        window.initializeCanvas(); // Call the core initialization function from xvg-core.js (now global)
+        window.XVGSystem = new XVGCore(); // Instantiate the core and expose it globally for remaining unrefactored code
+        window.XVGSystem.initializeCanvas(); // Call the core initialization function on the instance
         window.Engine = new EngineIntegration(); // Instantiate and expose the new EngineIntegration class globally for the remaining unrefactored code. 
         
         console.log("🚀 XVG Editor is now running with WASM-based core engines.");
