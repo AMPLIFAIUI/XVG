@@ -1,19 +1,17 @@
-// FILE: xvg-core.js - REFACTORED TO ES MODULE (Phase 3: Full Modularization)
+// FILE: xvg-core.js - REFACTORED TO ES MODULE (Phase 4: Final Tool Integration)
 
 'use strict';
 
 // Import refactored utilities
-import { XVGUtils } from './xvg-utilities.js'; // Assuming xvg-utilities.js exports XVGUtils
+import { XVGUtils } from './xvg-utilities.js'; 
 
 // --- State and Core Class ---
 
-// This class encapsulates the entire application state and core logic,
-// replacing the monolithic global XVGSystem object.
 export class XVGCore {
   constructor() {
     this.state = {
       initialized: false,
-      modulesReady: { utilities: true, core: false, tools: false }, // Utilities is now ready
+      modulesReady: { utilities: true, core: false, tools: false }, 
       canvas: { element: null, context: null, overlay: null, overlayContext: null, width: 2000, height: 1500, ready: false },
       appState: {
         canvas: { width: 2000, height: 1500, backgroundColor: 'transparent' },
@@ -64,9 +62,8 @@ export class XVGCore {
 
     // set default tool visibly (after tools are initialized)
     setTimeout(() => {
-      // This still relies on the global window.setTool, which is a key dependency in xvg-tools.js
-      // This will be fixed when xvg-tools.js is fully refactored to use the XVGCore instance.
-      if (window.setTool) window.setTool('select'); 
+      // The global window.setTool is now replaced by the instance method
+      this.setTool('select'); 
       
       // Initialize tool categories to be expanded by default
       document.querySelectorAll('.tool-category-header').forEach(header => {
@@ -99,6 +96,18 @@ export class XVGCore {
     this.state.initialized = true;
     return true;
   }
+  
+  setTool(toolName) {
+    const s = this.state;
+    if (!s.tools[toolName]) {
+      // Assuming notify is a method on the core or imported utility
+      console.error(`Tool "${toolName}" not found.`);
+      return;
+    }
+    s.appState.currentTool = toolName;
+    s.tools[toolName].initialize && s.tools[toolName].initialize();
+    console.log(`Tool switched to: ${toolName}`);
+  }
 
   // --- Internal Methods (Replacing the original internal functions) ---
 
@@ -106,7 +115,7 @@ export class XVGCore {
     const canvas = this.state.canvas.element;
     if (!canvas) return;
 
-    // Handlers now call methods on the global window object (for now)
+    // Handlers now call methods on the class instance, eliminating global tool handlers
     canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
     canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
     canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
@@ -116,24 +125,27 @@ export class XVGCore {
     document.addEventListener('keydown', this.handleKeyDown.bind(this));
   }
   
-  // The original functions are now methods, replacing global state access with 'this.state'
   handleMouseDown(e) {
     const p = this.getCanvasPointFromEvent(e);
-    window.handleToolMouseDown && window.handleToolMouseDown(p.x, p.y, e); // Still relies on global tool handler
+    const toolInstance = this.state.tools[this.state.appState.currentTool];
+    toolInstance && toolInstance.startSelection && toolInstance.startSelection(p, e.button === 2);
   }
   
   handleMouseMove(e) {
     const p = this.getCanvasPointFromEvent(e);
-    window.handleToolMouseMove && window.handleToolMouseMove(p.x, p.y, e); // Still relies on global tool handler
+    const toolInstance = this.state.tools[this.state.appState.currentTool];
+    toolInstance && toolInstance.updateSelection && toolInstance.updateSelection(p);
   }
   
   handleMouseUp(e) {
     const p = this.getCanvasPointFromEvent(e);
-    window.handleToolMouseUp && window.handleToolMouseUp(p.x, p.y, e); // Still relies on global tool handler
+    const toolInstance = this.state.tools[this.state.appState.currentTool];
+    toolInstance && toolInstance.finishSelection && toolInstance.finishSelection(p);
   }
   
   handleMouseLeave(e) {
-    window.handleToolMouseUp && window.handleToolMouseUp(0, 0, e); // Still relies on global tool handler
+    const toolInstance = this.state.tools[this.state.appState.currentTool];
+    toolInstance && toolInstance.finishSelection && toolInstance.finishSelection({x:0, y:0});
   }
 
   handleWheel(e){
@@ -159,15 +171,15 @@ export class XVGCore {
     if (!e.ctrlKey && !e.metaKey && !e.altKey) {
       if (e.key === 'b' || e.key === 'B') {
         e.preventDefault();
-        if (window.setTool) window.setTool('brush');
+        this.setTool('brush');
       }
       else if (e.key === 'r' || e.key === 'R') {
         e.preventDefault();
-        if (window.setTool) window.setTool('bgremover');
+        this.setTool('bgremover');
       }
       else if (e.key === 'm' || e.key === 'M') {
         e.preventDefault();
-        if (window.setTool) window.setTool('rectangle');
+        this.setTool('rectangle');
       }
     }
     if (e.key==='Home'){ e.preventDefault(); this.fitToView(); }
@@ -175,28 +187,19 @@ export class XVGCore {
   }
 
   // --- Core Logic Methods (Placeholders for the rest of the 5000+ lines) ---
-  // The original file contained many other functions. We must ensure they are all
-  // converted to methods on this class and use 'this.state' instead of global state.
-
-  // Example of a core function becoming a method
   renderCanvas(){
-    console.log('[RENDER] ===== RENDER CANVAS STARTED =====');
+    console.log('[RENDER] ===== RENDER CANVAS STARTED (MODULAR) =====');
     const c=this.state.canvas.element, ctx=this.state.canvas.context;
     if(!c||!ctx) { return; }
     
-    // ... (rest of the render logic using this.state)
     ctx.clearRect(0,0,c.width,c.height);
-    this.drawIndependentGrid(ctx); // Assuming this is now a method
-    // ...
+    this.drawIndependentGrid(ctx); 
   }
   
-  // Example of a utility function that was in the original file
   getCanvasPointFromEvent(e) {
-    // This logic is now handled by importing XVGUtils
     return XVGUtils.toWorld(e.clientX, e.clientY);
   }
   
-  // Example of a state manipulation function
   zoomCanvas(factor) {
     const t = this.state.appState.canvasTransform;
     t.zoom = XVGUtils.clamp(t.zoom * (1 + factor), t.minZoom, t.maxZoom);
@@ -210,10 +213,7 @@ export class XVGCore {
     this.renderCanvas();
   }
   
-  // Placeholder for the rest of the original functions (e.g., undo, redo, fitToView, etc.)
-  // These must be implemented as methods on this class.
   updateLayerList() {
-    // Placeholder for the UI update logic
     console.log('Layer list updated (placeholder)');
   }
   
@@ -237,14 +237,17 @@ export class XVGCore {
     console.log('Draw Independent Grid (placeholder)');
   }
   
-  // The original convertToPathStyle is now a standalone exported function
+  calculateTextDimensions(text, fontSize, fontFamily) {
+    // Placeholder for calculateTextDimensions used by SelectionTool
+    return { width: 100, height: 20 };
+  }
 }
 
 // --- Standalone Exports ---
 
 // The original convertToPathStyle function is kept as a standalone export
 export function convertToPathStyle(cssStyle) {
-  // ... (original implementation from lines 28-128 of the old file)
+  // ... (original implementation from lines 246-344 of the old file)
   if (!cssStyle) {
     return {
       fill: null,
@@ -344,5 +347,5 @@ export function convertToPathStyle(cssStyle) {
 }
 
 // Export the class and the standalone functions
-console.log('✅ xvg-core refactored to ES Module (Phase 3: Class Encapsulation)');
+console.log('✅ xvg-core refactored to ES Module (Phase 4: Final Tool Integration)');
 
