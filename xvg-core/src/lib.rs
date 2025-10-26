@@ -861,7 +861,7 @@ mod core_tests {
         let mut style = PathStyle::default();
         style.fill = Some(FillStyle{ color:[1.0,0.0,0.0,1.0], rule: FillRule::NonZero });
         style.stroke = Some(StrokeStyle{ color:[0.0,0.0,0.0,1.0], width: 2.0, cap: LineCap::Butt, join: LineJoin::Miter, dash_array: Vec::new() });
-        PathRecord { data, tf:[1.0,0.0,0.0,1.0,0.0,0.0], style, original_svg: None, layer_id: todo!() }
+        PathRecord { data, tf:[1.0,0.0,0.0,1.0,0.0,0.0], style, original_svg: None, layer_id: None }
     }
 
     #[test]

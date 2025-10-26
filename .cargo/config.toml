@@ -1,5 +1,5 @@
 [build]
-target-dir = "S:/xvg-tesseract/target"
+target-dir = "target"
 
 [target.x86_64-pc-windows-msvc]
 linker = "rust-lld"
