@@ -113,6 +113,7 @@ fn test_3d_engine() -> anyhow::Result<()> {
         tf: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
         style: PathStyle::default(),
         original_svg: None,
+        layer_id: None,
     };
     
     let params = ExtrusionParams {
@@ -184,6 +185,7 @@ fn test_crdt_engine() -> anyhow::Result<()> {
         tf: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
         style: PathStyle::default(),
         original_svg: None,
+        layer_id: None,
     };
     
     let path_id = engine.create_path(path_record);
@@ -199,6 +201,7 @@ fn test_crdt_engine() -> anyhow::Result<()> {
         tf: [1.0, 0.0, 0.0, 1.0, 10.0, 10.0],
         style: PathStyle::default(),
         original_svg: None,
+        layer_id: None,
     };
     engine.update_path(path_id, updated_path);
     println!("  ✅ Path update successful");
@@ -222,6 +225,7 @@ fn test_crdt_engine() -> anyhow::Result<()> {
         tf: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
         style: PathStyle::default(),
         original_svg: None,
+        layer_id: None,
     };
     let path_id2 = engine2.create_path(path_record2);
     
@@ -249,6 +253,7 @@ fn test_file_engine() -> anyhow::Result<()> {
         tf: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
         style: PathStyle::default(),
         original_svg: None,
+        layer_id: None,
     };
     file.paths.push(path_record);
     

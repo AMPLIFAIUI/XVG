@@ -68,6 +68,7 @@ XVG/
 
 ```bash
 cd xvg-core
+# Note: Environment issues need fixing first
 cargo build --all-features
 cargo run --bin test_engines
 ```
@@ -100,7 +101,7 @@ python -m http.server 8000
 ### Build Desktop App (after config fix)
 ```bash
 cd xvg-desktop
-npm install
+npm install  # Currently fails - vite not found
 npm run build
 cargo tauri dev
 ```
@@ -111,6 +112,7 @@ All engines are thoroughly tested:
 
 ```bash
 cd xvg-core
+# Note: Currently blocked by environment issues
 cargo test --all-features
 cargo run --bin test_engines
 ```
