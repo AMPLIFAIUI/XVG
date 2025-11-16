@@ -8,6 +8,9 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 xvg-core = { path = "../xvg-core" }
 anyhow = "1.0"
+pollster = { version = "0.3", optional = true }
+winit = { version = "0.29", optional = true }
+wgpu = { version = "0.19", optional = true }
 # For bitmap rendering (CPU rasterization)
 tiny-skia = "0.11"
 # For PNG encoding in extract()
@@ -23,5 +26,6 @@ serde-wasm-bindgen = { version = "0.6", optional = true }
 
 [features]
 default = ["std"]
+gpu = ["wgpu", "winit", "pollster"]
 std = []
 wasm = ["wasm-bindgen", "js-sys", "serde", "serde-wasm-bindgen", "xvg-core/wasm"]
