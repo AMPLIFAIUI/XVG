@@ -7,6 +7,9 @@ import { XVGUtils } from './xvg-utilities.js';
 
 // --- State and Core Class ---
 
+// Global access to the WASM runtime class
+const XVGRuntime = window.XVGRuntime;
+
 export class XVGCore {
   constructor() {
     this.state = {
@@ -28,6 +31,32 @@ export class XVGCore {
     
     // Expose the state for now, but should be accessed via getters/setters later
     this.XVGSystem = this.state;
+  }
+
+  // --- Public API Functions ---
+
+  /**
+   * Encodes the current application state into a binary XVG file.
+   * This is a crucial function for the Zero Conversion contract.
+   */
+  getEncodedXVGFile() {
+    const { width, height } = this.state.appState.canvas;
+    
+    // Use the XVGFile stub from WASM to construct the file
+    // Note: window.XVGFile is the stub we created in xvg-wasm/src/lib.rs
+    const xvgFile = new window.XVGFile(width, height);
+
+    // 1. Add Paths
+    this.state.appState.paths.forEach(path => {
+      // path.data is Uint8Array, path.tf is Array, path.style is JS object
+      xvgFile.add_path(path.data, path.tf, path.style);
+    });
+
+    // 2. Add Images (Stub - assuming image data is stored in the state)
+    // This part requires a more complex state model, but for now, we'll skip it
+    // as the focus is on the runtime contract.
+
+    return xvgFile.encode_bytes();
   }
 
   // --- Public API Functions ---
@@ -187,12 +216,47 @@ export class XVGCore {
   }
 
   // --- Core Logic Methods (Placeholders for the rest of the 5000+ lines) ---
+  /**
+   * Renders the current document state using the XVGRuntime.
+   * This implements the core 'zero conversion' rendering promise.
+   */
+  renderDocument() {
+    if (!this.state.canvas.ready) return;
+
+    // 1. Get the current XVG file data (must be implemented in XVGCore)
+    const xvgFileBytes = this.getEncodedXVGFile();
+    if (!xvgFileBytes || xvgFileBytes.length === 0) {
+      this.state.canvas.context.clearRect(0, 0, this.state.canvas.width, this.state.canvas.height);
+      return;
+    }
+
+    try {
+      // 2. Load the file into the WASM runtime
+      // The XVGRuntime constructor expects a Uint8Array
+      const runtime = new XVGRuntime(xvgFileBytes);
+      
+      // 3. Render the file to a bitmap (RGBA8888)
+      const width = this.state.appState.canvas.width;
+      const height = this.state.appState.canvas.height;
+      // The render function returns a Uint8Array of RGBA data
+      const pixelData = runtime.render(width, height); 
+
+      // 4. Create ImageData and put it on the canvas
+      const imageData = new ImageData(new Uint8ClampedArray(pixelData), width, height);
+      this.state.canvas.context.putImageData(imageData, 0, 0);
+
+    } catch (e) {
+      console.error("XVG Runtime Rendering Error:", e);
+    }
+  }
+
   renderCanvas(){
     console.log('[RENDER] ===== RENDER CANVAS STARTED (MODULAR) =====');
     const c=this.state.canvas.element, ctx=this.state.canvas.context;
     if(!c||!ctx) { return; }
     
     ctx.clearRect(0,0,c.width,c.height);
+    this.renderDocument(); // Use the new zero-conversion runtime render
     this.drawIndependentGrid(ctx); 
   }
   
@@ -237,6 +301,16 @@ export class XVGCore {
     console.log('Draw Independent Grid (placeholder)');
   }
   
+  drawPaths() {
+    // DEPRECATED: This logic is now handled by the XVGRuntime.render() call.
+    // Keeping the function stub for compatibility until full refactor.
+  }
+
+  drawImages() {
+    // DEPRECATED: This logic is now handled by the XVGRuntime.render() call.
+    // Keeping the function stub for compatibility until full refactor.
+  }
+
   calculateTextDimensions(text, fontSize, fontFamily) {
     // Placeholder for calculateTextDimensions used by SelectionTool
     return { width: 100, height: 20 };

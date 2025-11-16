@@ -1,0 +1,30 @@
+/* tslint:disable */
+/* eslint-disable */
+export const memory: WebAssembly.Memory;
+export const __wbg_xvgfile_free: (a: number, b: number) => void;
+export const __wbg_xvgruntime_free: (a: number, b: number) => void;
+export const xvgfile_add_path: (a: number, b: any, c: any, d: any) => [number, number];
+export const xvgfile_clear_paths: (a: number) => void;
+export const xvgfile_decode: (a: any) => [number, number, number];
+export const xvgfile_encode_bytes: (a: number) => any;
+export const xvgfile_get_header: (a: number) => [number, number, number];
+export const xvgfile_new: (a: number, b: number) => number;
+export const xvgfile_path_count: (a: number) => number;
+export const xvgruntime_extract: (a: number, b: number, c: number) => [number, number, number];
+export const xvgruntime_load: (a: number, b: number) => [number, number, number];
+export const xvgruntime_render: (a: number, b: number, c: number) => [number, number, number];
+export const rust_zstd_wasm_shim_calloc: (a: number, b: number) => number;
+export const rust_zstd_wasm_shim_free: (a: number) => void;
+export const rust_zstd_wasm_shim_malloc: (a: number) => number;
+export const rust_zstd_wasm_shim_memcmp: (a: number, b: number, c: number) => number;
+export const rust_zstd_wasm_shim_memcpy: (a: number, b: number, c: number) => number;
+export const rust_zstd_wasm_shim_memmove: (a: number, b: number, c: number) => number;
+export const rust_zstd_wasm_shim_memset: (a: number, b: number, c: number) => number;
+export const rust_zstd_wasm_shim_qsort: (a: number, b: number, c: number, d: number) => void;
+export const __wbindgen_malloc: (a: number, b: number) => number;
+export const __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
+export const __wbindgen_exn_store: (a: number) => void;
+export const __externref_table_alloc: () => number;
+export const __wbindgen_export_4: WebAssembly.Table;
+export const __externref_table_dealloc: (a: number) => void;
+export const __wbindgen_start: () => void;

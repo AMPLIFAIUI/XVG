@@ -6,6 +6,7 @@ import init, { XVGSDFEngine, XVGCRDTEngine, XVG3DEngine } from '../pkg/xvg_wasm.
 // We must load them after the WASM is initialized.
 // import '../pkg/xvg-utilities.js'; // Refactored and no longer needed here
 import { XVGCore } from '../pkg/xvg-core.js'; // Import the new XVGCore class
+import { XVGRuntime } from '../modules/xvg_wasm.js'; // Import the new XVGRuntime
 import { initializeTools } from '../pkg/xvg-tools.js'; // Import the tool initializer
 // import { EngineIntegration } from '../pkg/xvg-engine-integration.js'; // Import the refactored class
 
@@ -20,11 +21,8 @@ async function startXVGEditor() {
         // Since the old code is globally scoped, we rely on the global functions being available
         // after the imports above. This is the part that needs to be refactored later.
         
-        // The WASM classes are exposed globally for the remaining unrefactored code to find them.
-        // We need to ensure they are available globally for the time being.
-        window.XVGSDFEngine = XVGSDFEngine;
-        window.XVGCRDTEngine = XVGCRDTEngine;
-        window.XVG3DEngine = XVG3DEngine;
+        // The new XVGRuntime is exposed globally for the remaining unrefactored code to find it.
+        window.XVGRuntime = XVGRuntime;
         
         // You can now call a global function to start the application, e.g.,
         window.XVGSystem = new XVGCore(); // Instantiate the core and expose it globally for remaining unrefactored code

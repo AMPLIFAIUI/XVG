@@ -1,0 +1,27 @@
+[package]
+name = "xvg-runtime"
+version = "1.0.0"
+edition = "2021"
+authors = ["xvg-team"]
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+xvg-core = { path = "../xvg-core" }
+anyhow = "1.0"
+# For bitmap rendering (CPU rasterization)
+tiny-skia = "0.11"
+# For PNG encoding in extract()
+image = "0.24"
+# For SVG export
+resvg = { version = "0.36" }
+usvg = { version = "0.36", features = ["default"] }
+# For WASM bindings
+wasm-bindgen = { version = "0.2", optional = true }
+js-sys = { version = "0.3", optional = true }
+serde = { version = "1.0", features = ["derive"], optional = true }
+serde-wasm-bindgen = { version = "0.6", optional = true }
+
+[features]
+default = ["std"]
+std = []
+wasm = ["wasm-bindgen", "js-sys", "serde", "serde-wasm-bindgen", "xvg-core/wasm"]
