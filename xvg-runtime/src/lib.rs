@@ -29,8 +29,7 @@ pub enum RenderOutput {
 
 #[cfg(feature = "gpu")]
 use wgpu;
-#[cfg(feature = "gpu")]
-use winit::window::Window;
+
 
 pub struct XVGRuntime {
     file: File,
@@ -244,6 +243,66 @@ impl XVGRuntime {
 
         // 6. Return the texture
         Ok(RenderOutput::GpuTexture(texture))
+    }
+
+    #[cfg(feature = "gpu")]
+    fn read_texture_to_buffer(device: &wgpu::Device, queue: &wgpu::Queue, texture: &wgpu::Texture, width: u32, height: u32) -> Result<Vec<u8>> {
+        let output_buffer_size = (std::mem::size_of::<u32>() * width as usize * height as usize) as wgpu::BufferAddress;
+        let output_buffer_desc = wgpu::BufferDescriptor {
+            label: Some("XVG Output Buffer"),
+            size: output_buffer_size,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        };
+        let output_buffer = device.create_buffer(&output_buffer_desc);
+
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("XVG Readback Encoder"),
+        });
+
+        let texture_size = wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        };
+
+        encoder.copy_texture_to_buffer(
+            wgpu::ImageCopyTexture {
+                texture: &texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::ImageCopyBuffer {
+                buffer: &output_buffer,
+                layout: wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(std::num::NonZeroU32::new(width * 4).unwrap().get()),
+                    rows_per_image: Some(height),
+                },
+            },
+            texture_size,
+        );
+
+        queue.submit(Some(encoder.finish()));
+
+        // NOTE: This is the blocking part that is problematic in WASM/async contexts.
+        // For a full implementation, this would need to be handled asynchronously.
+        // For now, we use pollster::block_on for non-WASM environments.
+        let buffer_slice = output_buffer.slice(..);
+        let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            sender.send(result).unwrap();
+        });
+
+        device.poll(wgpu::Maintain::Wait);
+
+        pollster::block_on(receiver.receive()).unwrap().unwrap();
+
+        let data = buffer_slice.get_mapped_range().to_vec();
+        output_buffer.unmap();
+
+        Ok(data)
     }
 
     // --- Internal CRDT Implementation ---

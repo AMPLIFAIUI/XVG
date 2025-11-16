@@ -8,6 +8,8 @@ import { XVGUtils } from './xvg-utilities.js';
 // --- State and Core Class ---
 
 // Global access to the WASM runtime class
+// The XVGRuntime class is now imported globally by the WASM init function.
+// We assume it is available on the window object for now for compatibility.
 const XVGRuntime = window.XVGRuntime;
 
 export class XVGCore {
