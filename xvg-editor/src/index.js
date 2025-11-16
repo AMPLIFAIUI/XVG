@@ -1,4 +1,4 @@
-import init, { XVGSDFEngine, XVGCRDTEngine, XVG3DEngine } from '../pkg/xvg_wasm.js';
+import init, { XVGRuntime } from '../modules/xvg_wasm.js';
 
 // --- Global helper functions for the old monolithic code to work for now ---
 // These files are still globally-scoped and will be refactored next.
@@ -6,7 +6,7 @@ import init, { XVGSDFEngine, XVGCRDTEngine, XVG3DEngine } from '../pkg/xvg_wasm.
 // We must load them after the WASM is initialized.
 // import '../pkg/xvg-utilities.js'; // Refactored and no longer needed here
 import { XVGCore } from '../pkg/xvg-core.js'; // Import the new XVGCore class
-import { XVGRuntime } from '../modules/xvg_wasm.js'; // Import the new XVGRuntime
+// import { XVGRuntime } from '../modules/xvg_wasm.js'; // Now imported directly from init
 import { initializeTools } from '../pkg/xvg-tools.js'; // Import the tool initializer
 // import { EngineIntegration } from '../pkg/xvg-engine-integration.js'; // Import the refactored class
 

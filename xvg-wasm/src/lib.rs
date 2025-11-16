@@ -1,4 +1,6 @@
 use wasm_bindgen::prelude::*;
+use serde_json;
+use xvg_runtime::CRDTEntry;
 use js_sys::Uint8Array;
 use xvg_runtime::{XVGRuntime, RenderTarget};
 use anyhow::Result;
@@ -48,6 +50,19 @@ impl XVGRuntimeWasm {
 
         // Copy the Vec<u8> data into a new Uint8Array for JS
         Ok(Uint8Array::from(data.as_slice()))
+    }
+
+    /// Applies a CRDT operation to the file state.
+    /// The operation is passed as a JSON string.
+    #[wasm_bindgen(js_name = applyCrdtOp)]
+    pub fn apply_crdt_op(&mut self, op_json: &str) -> Result<(), JsValue> {
+        let op: CRDTEntry = serde_json::from_str(op_json)
+            .map_err(|e| JsValue::from_str(&format!("Failed to deserialize CRDT operation: {}", e)))?;
+
+        self.0.apply_crdt_op(op)
+            .map_err(|e| JsValue::from_str(&format!("Failed to apply CRDT operation: {}", e)))?;
+
+        Ok(())
     }
 }
 

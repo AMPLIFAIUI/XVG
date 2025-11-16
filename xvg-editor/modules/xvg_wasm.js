@@ -297,6 +297,19 @@ export class XVGRuntime {
         wasm.__wbg_xvgruntime_free(ptr, 0);
     }
     /**
+     * Applies a CRDT operation to the file state.
+     * The operation is passed as a JSON string.
+     * @param {string} op_json
+     */
+    applyCrdtOp(op_json) {
+        const ptr0 = passStringToWasm0(op_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.xvgruntime_applyCrdtOp(this.__wbg_ptr, ptr0, len0);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
      * Loads an XVG file from raw bytes (Uint8Array or ArrayBuffer).
      * @param {Uint8Array} data
      */

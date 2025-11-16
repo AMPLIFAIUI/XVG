@@ -7,38 +7,59 @@ use image::ImageEncoder;
 use std::io::Cursor;
 
 // Re-export xvg_core types for downstream crates like xvg-wasm
-pub use xvg_core::{File, Header, PathRecord, PathStyle, FillStyle, StrokeStyle, FillRule, LineCap, LineJoin, BlendMode};
+pub use xvg_core::{File, Header, PathRecord, PathStyle, FillStyle, StrokeStyle, FillRule, LineCap, LineJoin, BlendMode, SDFLayer, sdf::SDFEngine, three_d::Scene3DEngine, Scene3DNode, crdt::CRDTEngine, CRDTEntry};
 
 // --- XVG Runtime Contract Definitions ---
 
 pub enum RenderTarget {
     Bitmap,
-    // GpuDevice { device: &'a wgpu::Device, queue: &'a wgpu::Queue }, // Future WebGPU implementation
+    Svg,
+    Png,
+    #[cfg(feature = "gpu")]
+    GpuTexture,
 }
 
 pub enum RenderOutput {
     Bitmap(Vec<u8>), // RGBA8888 pixel data
-    // GpuTexture(wgpu::Texture),
+    #[cfg(feature = "gpu")]
+    GpuTexture(wgpu::Texture),
 }
 
 // --- XVG Runtime Core Struct ---
 
+#[cfg(feature = "gpu")]
+use wgpu;
+
+
 pub struct XVGRuntime {
     file: File,
+    sdf_engine: SDFEngine,
+    scene_3d_engine: Scene3DEngine,
+    crdt_engine: CRDTEngine,
 }
 
 impl XVGRuntime {
     /// Loads an XVG file from raw bytes.
     pub fn load(data: &[u8]) -> Result<Self> {
         let file = File::decode(data)?;
-        Ok(Self { file })
+        let sdf_engine = SDFEngine::new();
+        let scene_3d_engine = Scene3DEngine::new();
+        let crdt_engine = CRDTEngine::new(1); // Placeholder author_id for now
+        Ok(Self { file, sdf_engine, scene_3d_engine, crdt_engine })
     }
 
     /// Implements the core rendering contract: xvg.render(width, height, target)
     pub fn render(&self, width: u32, height: u32, target: RenderTarget) -> Result<RenderOutput> {
+        #[cfg(feature = "gpu")]
+        if let RenderTarget::GpuTexture = target {
+            return self.render_to_gpu(width, height);
+        }
         match target {
             RenderTarget::Bitmap => self.render_to_bitmap(width, height),
-            // _ => Err(anyhow!("Unsupported render target")),
+            RenderTarget::Svg => self.extract_svg().map(RenderOutput::Bitmap),
+            RenderTarget::Png => self.extract_png().map(RenderOutput::Bitmap),
+            #[cfg(feature = "gpu")]
+            RenderTarget::GpuTexture => self.render_to_gpu(width, height),
         }
     }
 
@@ -62,6 +83,17 @@ impl XVGRuntime {
         // Fill the background with a transparent color (optional, but good practice)
         pixmap.fill(Color::from_rgba8(0, 0, 0, 0));
 
+        // --- 1. Render SDFs ---
+        for sdf_record in &self.file.sdf {
+            self.render_sdf_record(&mut pixmap, width, height, sdf_record)?;
+        }
+
+        // --- 2. Render 3D Scenes ---
+        for scene_node in &self.file.scene3d {
+            self.render_3d_scene_node(&mut pixmap, width, height, scene_node)?;
+        }
+
+        // --- 3. Render Paths ---
         for path_record in &self.file.paths {
             // 1. Convert XVG PathRecord to tiny-skia Path
             let mut pb = tiny_skia::PathBuilder::new();
@@ -146,6 +178,220 @@ impl XVGRuntime {
         Ok(RenderOutput::Bitmap(pixmap.take()))
     }
 
+    #[cfg(feature = "gpu")]
+    fn render_to_gpu(&self, width: u32, height: u32) -> Result<RenderOutput> {
+        // 1. Initialize WGPU (Instance, Adapter, Device, Queue)
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::default());
+        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default()))
+            .ok_or_else(|| anyhow!("Failed to find an appropriate adapter"))?;
+
+        let (device, queue) = pollster::block_on(adapter.request_device(
+            &wgpu::DeviceDescriptor {
+                label: Some("XVG Render Device"),
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::downlevel_webgl2_defaults(),
+            },
+            None,
+        ))?;
+
+        // 2. Create a texture to render to
+        let texture_size = wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        };
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("XVG Render Target"),
+            size: texture_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        });
+        let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        // 3. Create a command encoder
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("XVG Render Encoder"),
+        });
+
+        // 4. Begin render pass
+        {
+            let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("XVG Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &texture_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK), // Clear to black for now
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+
+            // NOTE: Here is where the actual rendering logic for Paths, SDFs, and 3D would go.
+            // For this phase, we are just setting up the pipeline.
+        }
+
+        // 5. Submit the command buffer
+        queue.submit(Some(encoder.finish()));
+
+        // 6. Return the texture
+        Ok(RenderOutput::GpuTexture(texture))
+    }
+
+    #[cfg(feature = "gpu")]
+    fn read_texture_to_buffer(device: &wgpu::Device, queue: &wgpu::Queue, texture: &wgpu::Texture, width: u32, height: u32) -> Result<Vec<u8>> {
+        let output_buffer_size = (std::mem::size_of::<u32>() * width as usize * height as usize) as wgpu::BufferAddress;
+        let output_buffer_desc = wgpu::BufferDescriptor {
+            label: Some("XVG Output Buffer"),
+            size: output_buffer_size,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        };
+        let output_buffer = device.create_buffer(&output_buffer_desc);
+
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("XVG Readback Encoder"),
+        });
+
+        let texture_size = wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        };
+
+        encoder.copy_texture_to_buffer(
+            wgpu::ImageCopyTexture {
+                texture: &texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::ImageCopyBuffer {
+                buffer: &output_buffer,
+                layout: wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(std::num::NonZeroU32::new(width * 4).unwrap().get()),
+                    rows_per_image: Some(height),
+                },
+            },
+            texture_size,
+        );
+
+        queue.submit(Some(encoder.finish()));
+
+        // NOTE: This is the blocking part that is problematic in WASM/async contexts.
+        // For a full implementation, this would need to be handled asynchronously.
+        // For now, we use pollster::block_on for non-WASM environments.
+        let buffer_slice = output_buffer.slice(..);
+        let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            sender.send(result).unwrap();
+        });
+
+        device.poll(wgpu::Maintain::Wait);
+
+        pollster::block_on(receiver.receive()).unwrap().unwrap();
+
+        let data = buffer_slice.get_mapped_range().to_vec();
+        output_buffer.unmap();
+
+        Ok(data)
+    }
+
+    // --- Internal CRDT Implementation ---
+
+    /// Applies a CRDT operation to the file state.
+    pub fn apply_crdt_op(&mut self, op: CRDTEntry) -> Result<()> {
+        // NOTE: This is a placeholder for the complex CRDT application logic.
+        // A full implementation would involve:
+        // 1. Deserializing the CRDT operation payload.
+        // 2. Calling the appropriate method on self.crdt_engine to apply the change.
+        // 3. Updating the self.file state based on the CRDT engine's result.
+
+        // For now, we will just log the operation.
+        println!("Applying CRDT Operation: {:?}", op.operation_type);
+        
+        // Placeholder for actual logic
+        // self.crdt_engine.apply_op(&mut self.file, op)?;
+
+        Ok(())
+    }
+
+    // --- Internal 3D Rendering Implementation ---
+
+    fn render_3d_scene_node(&self, pixmap: &mut Pixmap, width: u32, height: u32, scene_node: &Scene3DNode) -> Result<()> {
+        // NOTE: This is a placeholder for a complex 3D rendering process.
+        // For now, we will draw a simple green bounding box to indicate the 3D area.
+        // A full implementation would involve a software rasterizer or a WGPU call.
+
+        let color = Color::from_rgba8(0, 255, 0, 128); // Semi-transparent Green
+        let mut paint = Paint::default();
+        paint.set_color(color);
+        paint.anti_alias = true;
+
+        // Placeholder: Draw a rectangle based on the 3D node's assumed screen projection
+        // In a real scenario, we would need to project the 3D mesh's bounding box.
+        // For simplicity, we'll use a fixed area for now.
+        let rect = tiny_skia::Rect::from_xywh(
+            (width as f32 * 0.1),
+            (height as f32 * 0.1),
+            (width as f32 * 0.8),
+            (height as f32 * 0.8),
+        ).ok_or_else(|| anyhow!("Invalid 3D placeholder bounds"))?;
+
+        let transform = Transform::identity();
+
+        pixmap.fill_rect(
+            rect,
+            &paint,
+            transform,
+            None,
+        );
+
+        Ok(())
+    }
+
+    // --- Internal SDF Rendering Implementation ---
+
+    fn render_sdf_record(&self, pixmap: &mut Pixmap, width: u32, height: u32, sdf_record: &SDFLayer) -> Result<()> {
+        // NOTE: This is a placeholder for a complex SDF rendering process.
+        // For now, we will draw a simple bounding box to indicate the SDF area.
+        // A full implementation would involve querying the SDF engine for distance
+        // at each pixel and coloring based on the result.
+
+        let color = Color::from_rgba8(255, 0, 0, 128); // Semi-transparent Red
+        let mut paint = Paint::default();
+        paint.set_color(color);
+        paint.anti_alias = true;
+
+        let rect = tiny_skia::Rect::from_xywh(
+            sdf_record.bounds[0],
+            sdf_record.bounds[1],
+            sdf_record.bounds[2] - sdf_record.bounds[0],
+            sdf_record.bounds[3] - sdf_record.bounds[1],
+        ).ok_or_else(|| anyhow!("Invalid SDF bounds"))?;
+
+        let scale_x = width as f32 / self.file.header.width as f32;
+        let scale_y = height as f32 / self.file.header.height as f32;
+        let transform = Transform::from_scale(scale_x, scale_y);
+
+        pixmap.fill_rect(
+            rect,
+            &paint,
+            transform,
+            None,
+        );
+
+        Ok(())
+    }
+
     // --- Internal Extraction Implementation ---
 
     fn extract_svg(&self) -> Result<Vec<u8>> {
@@ -162,7 +408,8 @@ impl XVGRuntime {
         let bitmap_output = self.render_to_bitmap(width, height)?;
         let pixel_data = match bitmap_output {
             RenderOutput::Bitmap(data) => data,
-            
+            #[cfg(feature = "gpu")]
+            RenderOutput::GpuTexture(_) => return Err(anyhow!("Cannot encode GPU texture to PNG.")),
         };
 
         // 2. Encode to PNG
