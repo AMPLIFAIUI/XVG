@@ -1,12 +1,13 @@
 [workspace]
 members = [
+    "xvg-runtime",
     "xvg-core",
     "xvg-cli", 
     "xvg-py",
-    "xvg-ffi"
+    "xvg-ffi",
+    "xvg-wasm",
 ]
 exclude = [
-    "xvg-wasm"
 ]
 resolver = "2"
 

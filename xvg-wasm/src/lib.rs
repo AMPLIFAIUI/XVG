@@ -1,33 +1,75 @@
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
-use js_sys::{Uint8Array, Array};
+use js_sys::Uint8Array;
+use xvg_runtime::{XVGRuntime, RenderTarget};
+use anyhow::Result;
 
-use serde_wasm_bindgen;
-use xvg_core::{
-    File, Header, PathRecord, PathStyle, FillStyle, StrokeStyle,
-    FillRule, LineCap, LineJoin, BlendMode, Asset, AssetType, AssetMetadata,
-    // Advanced engines (excluding GPU for WASM compatibility)
-    sdf::SDFEngine,
-    three_d::Scene3DEngine,
-    crdt::CRDTEngine
-    // shader::WGSLShaderEngine - TEMPORARILY COMMENTED OUT FOR WASM COMPATIBILITY
-};
-
-/// Error as string for JS
+// Error wrapper for JS
 fn wrap_err<E: std::fmt::Display>(err: E) -> JsValue {
     JsValue::from_str(&err.to_string())
 }
 
-/// A safe, high-level wrapper around the Rust XVG file model, optimized for WASM/JS/TS.
-#[wasm_bindgen]
-pub struct XVGFile(File);
+/// The WASM-exposed XVG Runtime, implementing the Zero-Conversion contract.
+#[wasm_bindgen(js_name = XVGRuntime)]
+pub struct XVGRuntimeWasm(XVGRuntime);
 
-#[wasm_bindgen]
-impl XVGFile {
+#[wasm_bindgen(js_class = XVGRuntime)]
+impl XVGRuntimeWasm {
+    /// Loads an XVG file from raw bytes (Uint8Array or ArrayBuffer).
+    #[wasm_bindgen(constructor)]
+    pub fn load(data: &[u8]) -> Result<XVGRuntimeWasm, JsValue> {
+        XVGRuntime::load(data)
+            .map(XVGRuntimeWasm)
+            .map_err(wrap_err)
+    }
+
+    /// Implements the core rendering contract: xvg.render(width, height)
+    /// Renders the XVG file to a bitmap and returns the RGBA8888 pixel data as a Uint8Array.
+    #[wasm_bindgen]
+    pub fn render(&self, width: u32, height: u32) -> Result<Uint8Array, JsValue> {
+        let output = self.0.render(width, height, RenderTarget::Bitmap)
+            .map_err(wrap_err)?;
+
+        match output {
+            xvg_runtime::RenderOutput::Bitmap(data) => {
+                // Copy the Vec<u8> data into a new Uint8Array for JS
+                Ok(Uint8Array::from(data.as_slice()))
+            },
+            // This case is currently unreachable as only Bitmap is implemented
+            _ => Err(JsValue::from_str("Unsupported render output type in WASM")),
+        }
+    }
+
+    /// Implements the core extraction contract: xvg.extract(format)
+    /// Extracts the XVG file to a legacy format (e.g., "svg", "png") and returns the raw bytes.
+    #[wasm_bindgen]
+    pub fn extract(&self, format: &str) -> Result<Uint8Array, JsValue> {
+        let data = self.0.extract(format)
+            .map_err(wrap_err)?;
+
+        // Copy the Vec<u8> data into a new Uint8Array for JS
+        Ok(Uint8Array::from(data.as_slice()))
+    }
+}
+
+// --- Minimal Stub for XVGFile ---
+// This is kept to prevent breaking the editor's existing save/load logic during the transition.
+// The editor will be updated in the next phase to use XVGRuntime.
+
+use xvg_runtime::{File, Header, PathRecord, PathStyle, FillStyle, StrokeStyle, FillRule, LineCap, LineJoin, BlendMode};
+use wasm_bindgen::JsCast;
+use js_sys::{Array, ArrayBuffer};
+use serde_wasm_bindgen;
+
+/// A safe, high-level wrapper around the Rust XVG file model.
+#[wasm_bindgen(js_name = XVGFile)]
+pub struct XVGFileWasm(File);
+
+#[wasm_bindgen(js_class = XVGFile)]
+impl XVGFileWasm {
     /// Create an empty XVG file of given width and height.
     #[wasm_bindgen(constructor)]
-    pub fn new(width: u16, height: u16) -> XVGFile {
-        XVGFile(File {
+    pub fn new(width: u16, height: u16) -> XVGFileWasm {
+        XVGFileWasm(File {
             header: Header { width, height, ..Default::default() },
             ..Default::default()
         })
@@ -42,27 +84,24 @@ impl XVGFile {
 
     /// Decode binary data (Uint8Array or Array) as an XVGFile.
     #[wasm_bindgen]
-    pub fn decode(bytes: &JsValue) -> Result<XVGFile, JsValue> {
+    pub fn decode(bytes: &JsValue) -> Result<XVGFileWasm, JsValue> {
         // Accept Uint8Array or ArrayBuffer
         let u8slice: Vec<u8> = if let Some(arr) = bytes.dyn_ref::<Uint8Array>() {
             arr.to_vec()
-        } else if let Some(buf) = bytes.dyn_ref::<js_sys::ArrayBuffer>() {
+        } else if let Some(buf) = bytes.dyn_ref::<ArrayBuffer>() {
             Uint8Array::new(buf).to_vec()
         } else {
             return Err(JsValue::from_str("Expected Uint8Array or ArrayBuffer"));
         };
-        File::decode(&u8slice).map(XVGFile).map_err(wrap_err)
+        File::decode(&u8slice).map(XVGFileWasm).map_err(wrap_err)
     }
 
     /// Add a path from binary point data, transform, and style (JS object).
-    /// - `data`: Float32[x0, y0, x1, y1, ...] as Uint8Array or ArrayBuffer
-    /// - `tf`: Array of 6 numbers [a,b,c,d,e,f]
-    /// - `style`: PathStyle as JS object or undefined/null for default.
     #[wasm_bindgen]
     pub fn add_path(&mut self, data: &JsValue, tf: &JsValue, style: &JsValue) -> Result<(), JsValue> {
         let data_vec: Vec<u8> = if let Some(arr) = data.dyn_ref::<Uint8Array>() {
             arr.to_vec()
-        } else if let Some(buf) = data.dyn_ref::<js_sys::ArrayBuffer>() {
+        } else if let Some(buf) = data.dyn_ref::<ArrayBuffer>() {
             Uint8Array::new(buf).to_vec()
         } else {
             return Err(JsValue::from_str("add_path: data must be Uint8Array or ArrayBuffer"));
@@ -92,75 +131,6 @@ impl XVGFile {
         Ok(())
     }
 
-    /// Get all path records as a JS array of objects; efficient for interop.
-    #[wasm_bindgen]
-    pub fn get_paths(&self) -> Result<JsValue, JsValue> {
-        serde_wasm_bindgen::to_value(&self.0.paths).map_err(wrap_err)
-    }
-    /// Add an image asset to the XVG file
-    #[wasm_bindgen]
-    pub fn add_image(&mut self, name: &str, data: &JsValue, mime_type: &str) -> Result<(), JsValue> {
-        let data_vec: Vec<u8> = if let Some(arr) = data.dyn_ref::<Uint8Array>() {
-            arr.to_vec()
-        } else if let Some(buf) = data.dyn_ref::<js_sys::ArrayBuffer>() {
-            Uint8Array::new(buf).to_vec()
-        } else {
-            return Err(JsValue::from_str("add_image: data must be Uint8Array or ArrayBuffer"));
-        };
-
-        let asset_type = match mime_type {
-            "image/png" => AssetType::ImagePng,
-            "image/jpeg" => AssetType::ImageJpeg,
-            "image/webp" => AssetType::ImageWebP,
-            _ => return Err(JsValue::from_str("Unsupported image MIME type")),
-        };
-
-        // Use a simple timestamp for WASM compatibility
-        // In a real implementation, you might want to pass this from JavaScript
-        let now = 0; // Placeholder timestamp - can be updated from JS if needed
-
-        let asset = Asset {
-            ty: asset_type,
-            name: name.to_string(),
-            data: data_vec.clone(),
-            compressed: false,
-            metadata: AssetMetadata {
-                mime_type: mime_type.to_string(),
-                size: data_vec.len() as u64,
-                created: now,
-                modified: now,
-                checksum: [0; 32], // TODO: Calculate actual SHA-256 checksum
-                tags: vec!["image".to_string()],
-            },
-        };
-
-        self.0.assets.push(asset);
-        Ok(())
-    }
-
-    /// Get all image assets from the XVG file
-    #[wasm_bindgen]
-    pub fn get_images(&self) -> Result<JsValue, JsValue> {
-        let images: Vec<_> = self.0.assets.iter()
-            .filter(|asset| matches!(asset.ty, AssetType::ImagePng | AssetType::ImageJpeg | AssetType::ImageWebP))
-            .map(|asset| {
-                // Convert binary data to base64 for easy JavaScript handling
-                let base64_data = base64::encode(&asset.data);
-
-                serde_json::json!({
-                    "name": asset.name,
-                    "data": base64_data, // Return as base64 string
-                    "mime_type": asset.metadata.mime_type,
-                    "size": asset.metadata.size,
-                    "width": 0, // TODO: Extract from image data
-                    "height": 0, // TODO: Extract from image data
-                })
-            })
-            .collect();
-
-        serde_wasm_bindgen::to_value(&images).map_err(wrap_err)
-    }
-
     /// Get header as a JS object (width, height, etc).
     #[wasm_bindgen]
     pub fn get_header(&self) -> Result<JsValue, JsValue> {
@@ -176,366 +146,7 @@ impl XVGFile {
     pub fn clear_paths(&mut self) {
         self.0.paths.clear();
     }
-    /// Remove path by index (returns success/failure).
-    #[wasm_bindgen]
-    pub fn remove_path(&mut self, index: usize) -> bool {
-        if index < self.0.paths.len() {
-            self.0.paths.remove(index);
-            true
-        } else {
-            false
-        }
-    }
-    /// Basic info as a JS object (for fast preview).
-    #[wasm_bindgen]
-    pub fn get_file_info(&self) -> Result<JsValue, JsValue> {
-        let info = serde_json::json!({
-            "width": self.0.header.width,
-            "height": self.0.header.height,
-            "frame_count": self.0.header.frame_count,
-            "frame_rate": self.0.header.frame_rate,
-            "path_count": self.0.paths.len(),
-            "asset_count": self.0.assets.len(),
-            "has_physics": self.0.physics.is_some(),
-            "has_audio": !self.0.audio_tracks.is_empty(),
-            "has_collaboration": !self.0.crdt.is_empty(),
-        });
-        serde_wasm_bindgen::to_value(&info).map_err(wrap_err)
-    }
 }
 
-// PathBuilder for easy JS construction via fluent API
-#[wasm_bindgen]
-pub struct XVGPathBuilder {
-    points: Vec<f32>,
-    style: PathStyle,
-}
-
-#[wasm_bindgen]
-impl XVGPathBuilder {
-    /// New builder, with empty geometry.
-    #[wasm_bindgen(constructor)]
-    pub fn new() -> Self {
-        Self {
-            points: Vec::new(),
-            style: PathStyle {
-                fill: None,
-                stroke: None,
-                opacity: 1.0,
-                blend_mode: BlendMode::Normal,
-            },
-        }
-    }
-
-    /// Add a 2D point to the path.
-    pub fn add_point(&mut self, x: f32, y: f32) {
-        self.points.push(x);
-        self.points.push(y);
-    }
-
-    pub fn set_fill_color(&mut self, r: f32, g: f32, b: f32, a: f32) {
-        self.style.fill = Some(FillStyle {
-            color: [r, g, b, a],
-            rule: FillRule::NonZero
-        });
-    }
-    pub fn set_stroke_color(&mut self, r: f32, g: f32, b: f32, a: f32, width: f32) {
-        self.style.stroke = Some(StrokeStyle {
-            color: [r, g, b, a],
-            width,
-            cap: LineCap::Round,
-            join: LineJoin::Round,
-            dash_array: Vec::new()
-        });
-    }
-    /// Build returns [bytes, style] as a JS array: [Uint8Array, PathStyle].
-    pub fn build(&self) -> Result<Array, JsValue> {
-        let mut data = Vec::new();
-        for &val in &self.points {
-            data.extend_from_slice(&val.to_le_bytes());
-        }
-        let out = Array::new();
-        out.push(&Uint8Array::from(data.as_slice()));
-        out.push(&serde_wasm_bindgen::to_value(&self.style).map_err(wrap_err)?);
-        Ok(out)
-    }
-    pub fn get_style(&self) -> Result<JsValue, JsValue> {
-        serde_wasm_bindgen::to_value(&self.style).map_err(wrap_err)
-    }
-}
-
-// Camera/viewport helper for pan/zoom, world<->screen
-#[wasm_bindgen]
-pub struct XVGRenderer {
-    canvas_width: f32,
-    canvas_height: f32,
-    zoom: f32,
-    pan_x: f32,
-    pan_y: f32,
-}
-
-#[wasm_bindgen]
-impl XVGRenderer {
-    /// Create new camera/viewport for specified dimensions.
-    #[wasm_bindgen(constructor)]
-    pub fn new(width: f32, height: f32) -> Self {
-        Self {
-            canvas_width: width,
-            canvas_height: height,
-            zoom: 1.0,
-            pan_x: 0.0,
-            pan_y: 0.0,
-        }
-    }
-
-    pub fn set_zoom(&mut self, zoom: f32) {
-        self.zoom = zoom.clamp(0.1, 10.0);
-    }
-    pub fn set_pan(&mut self, x: f32, y: f32) {
-        self.pan_x = x;
-        self.pan_y = y;
-    }
-    pub fn world_to_screen(&self, x: f32, y: f32) -> Result<Array, JsValue> {
-        let screen_x = (x + self.pan_x) * self.zoom + self.canvas_width / 2.0;
-        let screen_y = (y + self.pan_y) * self.zoom + self.canvas_height / 2.0;
-        let arr = Array::new();
-        arr.push(&JsValue::from_f64(screen_x as f64));
-        arr.push(&JsValue::from_f64(screen_y as f64));
-        Ok(arr)
-    }
-    pub fn screen_to_world(&self, x: f32, y: f32) -> Result<Array, JsValue> {
-        let world_x = (x - self.canvas_width / 2.0) / self.zoom - self.pan_x;
-        let world_y = (y - self.canvas_height / 2.0) / self.zoom - self.pan_y;
-        let arr = Array::new();
-        arr.push(&JsValue::from_f64(world_x as f64));
-        arr.push(&JsValue::from_f64(world_y as f64));
-        Ok(arr)
-    }
-    pub fn get_viewport_info(&self) -> Result<JsValue, JsValue> {
-        let info = serde_json::json!({
-            "zoom": self.zoom,
-            "pan_x": self.pan_x,
-            "pan_y": self.pan_y,
-            "canvas_width": self.canvas_width,
-            "canvas_height": self.canvas_height,
-        });
-        serde_wasm_bindgen::to_value(&info).map_err(wrap_err)
-    }
-}
-
-// Utilities
-#[wasm_bindgen]
-pub fn create_sample_file() -> XVGFile {
-    let mut file = File::default();
-    file.header.width = 800;
-    file.header.height = 600;
-    let mut path_data = Vec::new();
-    let points = [100.0, 100.0, 300.0, 100.0, 300.0, 200.0, 100.0, 200.0, 100.0, 100.0];
-    for &p in &points {
-        path_data.extend_from_slice(&(p as f32).to_le_bytes());
-    }
-    file.paths.push(PathRecord {
-        data: path_data,
-        tf: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-        style: PathStyle {
-            fill: Some(FillStyle { color: [0.2, 0.6, 1.0, 0.8], rule: FillRule::NonZero }),
-            stroke: Some(StrokeStyle {
-                color: [0.1, 0.3, 0.8, 1.0], width: 2.0,
-                cap: LineCap::Round,
-                join: LineJoin::Round,
-                dash_array: Vec::new(),
-            }),
-            opacity: 1.0,
-            blend_mode: BlendMode::Normal,
-        },
-        original_svg: None,
-        layer_id: None,
-    });
-    XVGFile(file)
-}
-
-/// Parse raw path binary data (as Uint8Array) to a JS array of [x, y] arrays.
-#[wasm_bindgen]
-pub fn parse_path_data(data: &JsValue) -> Result<JsValue, JsValue> {
-    let data_vec: Vec<u8> = if let Some(arr) = data.dyn_ref::<Uint8Array>() {
-        arr.to_vec()
-    } else if let Some(buf) = data.dyn_ref::<js_sys::ArrayBuffer>() {
-        Uint8Array::new(buf).to_vec()
-    } else {
-        return Err(JsValue::from_str("parse_path_data: must be Uint8Array or ArrayBuffer"));
-    };
-    let mut points = Vec::new();
-    let mut i = 0;
-    while i + 7 < data_vec.len() {
-        let x = f32::from_le_bytes([data_vec[i], data_vec[i + 1], data_vec[i + 2], data_vec[i + 3]]);
-        let y = f32::from_le_bytes([data_vec[i + 4], data_vec[i + 5], data_vec[i + 6], data_vec[i + 7]]);
-        points.push([x, y]);
-        i += 8;
-    }
-    serde_wasm_bindgen::to_value(&points).map_err(wrap_err)
-}
-
-// Advanced Engine Bindings
-
-/// SDF Neural Network Engine
-#[wasm_bindgen]
-pub struct XVGSDFEngine(SDFEngine);
-
-#[wasm_bindgen]
-impl XVGSDFEngine {
-    #[wasm_bindgen(constructor)]
-    pub fn new() -> Self {
-        XVGSDFEngine(SDFEngine::new())
-    }
-
-    /// Train the neural network with sample data
-    pub fn train(&mut self, training_data: &JsValue) -> Result<JsValue, JsValue> {
-        let data: Vec<([f32; 2], f32)> = serde_wasm_bindgen::from_value(training_data.clone()).map_err(wrap_err)?;
-        let result = self.0.train(&data, 100, 0.01); // epochs=100, learning_rate=0.01
-        match result {
-            Ok(_) => serde_wasm_bindgen::to_value(&"Training completed successfully").map_err(wrap_err),
-            Err(e) => Err(JsValue::from_str(&e.to_string()))
-        }
-    }
-
-    /// Evaluate SDF at a point
-    pub fn evaluate(&self, x: f32, y: f32) -> f32 {
-        self.0.evaluate_sdf([x, y])
-    }
-
-    /// Get neural network weights
-    pub fn get_weights(&self) -> Result<JsValue, JsValue> {
-        // For now, return a placeholder since get_weights_buffer_size is private
-        serde_wasm_bindgen::to_value(&"Weights available").map_err(wrap_err)
-    }
-}
-
-/// WGSL Shader Engine - TEMPORARILY COMMENTED OUT FOR WASM COMPATIBILITY
-/// Will be restored when web-sys supports WebGPU APIs
-/*
-#[wasm_bindgen]
-pub struct XVGShaderEngine(WGSLShaderEngine);
-
-#[wasm_bindgen]
-impl XVGShaderEngine {
-    #[wasm_bindgen(constructor)]
-    pub fn new() -> Self {
-        XVGShaderEngine(WGSLShaderEngine::new())
-    }
-
-    /// Compile WGSL shader
-    pub fn compile(&self, source: &str) -> Result<JsValue, JsValue> {
-        let result = self.0.compile(source);
-        serde_wasm_bindgen::to_value(&result).map_err(wrap_err)
-    }
-
-    /// Execute shader with uniforms
-    pub fn execute(&self, uniforms: &JsValue) -> Result<JsValue, JsValue> {
-        let uniforms_data: std::collections::HashMap<String, f32> = serde_wasm_bindgen::from_value(uniforms.clone()).map_err(wrap_err)?;
-        let result = self.0.execute(&uniforms_data);
-        serde_wasm_bindgen::to_value(&result).map_err(wrap_err)
-    }
-}
-*/
-
-/// 3D Mesh Generation Engine
-#[wasm_bindgen]
-pub struct XVG3DEngine(Scene3DEngine);
-
-#[wasm_bindgen]
-impl XVG3DEngine {
-    #[wasm_bindgen(constructor)]
-    pub fn new() -> Self {
-        XVG3DEngine(Scene3DEngine::new())
-    }
-
-    /// Extrude 2D path to 3D mesh
-    pub fn extrude_path(&mut self, path_data: &JsValue, height: f32) -> Result<JsValue, JsValue> {
-        // Create a simple path record for extrusion
-        let path_points: Vec<[f32; 2]> = serde_wasm_bindgen::from_value(path_data.clone()).map_err(wrap_err)?;
-        let mut path_data_bytes = Vec::new();
-        for point in &path_points {
-            path_data_bytes.extend_from_slice(&point[0].to_le_bytes());
-            path_data_bytes.extend_from_slice(&point[1].to_le_bytes());
-        }
-        
-        let path_record = xvg_core::PathRecord {
-            data: path_data_bytes,
-            tf: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-            style: xvg_core::PathStyle::default(),
-            original_svg: None,
-            layer_id: None,
-        };
-        
-        let params = xvg_core::three_d::ExtrusionParams {
-            depth: height,
-            bevel_radius: 0.0,
-            bevel_segments: 0,
-            cap_front: true,
-            cap_back: true,
-            material_id: Some(0),
-        };
-        
-        let result = self.0.extrude_path(&path_record, &params);
-        match result {
-            Ok(mesh_id) => serde_wasm_bindgen::to_value(&mesh_id).map_err(wrap_err),
-            Err(e) => Err(JsValue::from_str(&e.to_string()))
-        }
-    }
-
-    /// Generate 3D mesh from path
-    pub fn generate_mesh(&self, path_data: &JsValue) -> Result<JsValue, JsValue> {
-        // Create a simple path record for mesh generation
-        let path_points: Vec<[f32; 2]> = serde_wasm_bindgen::from_value(path_data.clone()).map_err(wrap_err)?;
-        let mut path_data_bytes = Vec::new();
-        for point in &path_points {
-            path_data_bytes.extend_from_slice(&point[0].to_le_bytes());
-            path_data_bytes.extend_from_slice(&point[1].to_le_bytes());
-        }
-        
-        let path_record = xvg_core::PathRecord {
-            data: path_data_bytes,
-            tf: [1.0, 0.0, 0.0, 1.0, 0.0, 1.0],
-            style: xvg_core::PathStyle::default(),
-            original_svg: None,
-            layer_id: None,
-        };
-        
-        // For now, return a placeholder since get_mesh requires a mesh_id
-        // In a real implementation, we'd need to create a mesh first
-        serde_wasm_bindgen::to_value(&"Mesh generated successfully").map_err(wrap_err)
-    }
-}
-
-/// CRDT Collaboration Engine
-#[wasm_bindgen]
-pub struct XVGCRDTEngine(CRDTEngine);
-
-#[wasm_bindgen]
-impl XVGCRDTEngine {
-    #[wasm_bindgen(constructor)]
-    pub fn new() -> Self {
-        XVGCRDTEngine(CRDTEngine::new(1)) // author_id = 1
-    }
-
-    /// Apply operation to CRDT
-    pub fn apply_operation(&mut self, operation: &JsValue) -> Result<JsValue, JsValue> {
-        // For now, just return success since apply_operation is private
-        // In a real implementation, we'd need to make this method public in xvg-core
-        serde_wasm_bindgen::to_value(&"Operation applied successfully").map_err(wrap_err)
-    }
-
-    /// Merge operations from another CRDT
-    pub fn merge_operations(&mut self, operations: &JsValue) -> Result<JsValue, JsValue> {
-        // For now, just return success since merge_operations is private
-        // In a real implementation, we'd need to make this method public in xvg-core
-        serde_wasm_bindgen::to_value(&"Operations merged successfully").map_err(wrap_err)
-    }
-
-    /// Get current state
-    pub fn get_state(&self) -> Result<JsValue, JsValue> {
-        // For now, return a placeholder since DocumentState doesn't implement Serialize
-        // In a real implementation, we'd need to add #[derive(Serialize)] to DocumentState
-        serde_wasm_bindgen::to_value(&"CRDT state available").map_err(wrap_err)
-    }
-}
+// Export the stub for the old XVGFile struct
+pub use XVGFileWasm as XVGFile;
