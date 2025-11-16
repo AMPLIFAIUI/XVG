@@ -203,10 +203,12 @@ export class SelectionTool {
     
     const worldPoint = this.screenToWorld(screenPoint.x, screenPoint.y);
     const selectedPaths = this.getSelectedPaths();
+    const selectedImages = this.getSelectedImages();
+    const hasSelection = selectedPaths.length > 0 || selectedImages.length > 0;
     
     // Check if clicking on a resize handle
-    if (selectedPaths.length > 0) {
-      const bounds = this.calculateBounds(selectedPaths);
+    if (hasSelection) {
+      const bounds = this.calculateCombinedBounds();
       if (bounds) {
         const handle = this.getResizeHandleAt(worldPoint, bounds);
         if (handle) {
@@ -215,13 +217,17 @@ export class SelectionTool {
           this.resizeStartPoint = worldPoint;
           this.resizeStartBounds = bounds;
           this.initialPaths = selectedPaths.map(p => ({ ...p, data: p.data ? [...p.data] : [] }));
+          this.initialImages = selectedImages.map(img => ({ ...img }));
           return;
         }
       }
       
       // Check if clicking on a selected object (for dragging)
-      const hitIndex = this.findPathAtPoint(worldPoint.x, worldPoint.y);
-      if (hitIndex !== -1 && this.core.state.appState.selectedPaths.includes(hitIndex)) {
+      const hitPathIndex = this.findPathAtPoint(worldPoint.x, worldPoint.y);
+      const hitImageIndex = this.findImageAtPoint(worldPoint.x, worldPoint.y);
+      
+      if ((hitPathIndex !== -1 && this.core.state.appState.selectedPaths.includes(hitPathIndex)) ||
+          (hitImageIndex !== -1 && this.core.state.appState.selectedImages.includes(hitImageIndex))) {
         this.isDragging = true;
         this.dragStartPoint = worldPoint;
         this.initialSelectionPos = selectedPaths.map(p => this.getPathPosition(p));
@@ -261,6 +267,7 @@ export class SelectionTool {
       
       if (this.hasStartedDrag) {
         this.moveSelectedPaths(dx, dy);
+        this.moveSelectedImages(dx, dy);
         this.core.renderCanvas();
       }
       return;
@@ -305,13 +312,19 @@ export class SelectionTool {
       
       if (distance < 5) {
         // Single-click selection
-        const hitIndex = this.findPathAtPoint(worldPoint.x, worldPoint.y);
-        if (hitIndex !== -1) {
-          this.core.state.appState.selectedPaths = [hitIndex];
-          this.core.state.appState.selectedImages = [];
-        } else {
+        const hitImageIndex = this.findImageAtPoint(worldPoint.x, worldPoint.y);
+        if (hitImageIndex !== -1) {
+          this.core.state.appState.selectedImages = [hitImageIndex];
           this.core.state.appState.selectedPaths = [];
-          this.core.state.appState.selectedImages = [];
+        } else {
+          const hitPathIndex = this.findPathAtPoint(worldPoint.x, worldPoint.y);
+          if (hitPathIndex !== -1) {
+            this.core.state.appState.selectedPaths = [hitPathIndex];
+            this.core.state.appState.selectedImages = [];
+          } else {
+            this.core.state.appState.selectedPaths = [];
+            this.core.state.appState.selectedImages = [];
+          }
         }
       } else {
         // Box selection
@@ -362,6 +375,79 @@ export class SelectionTool {
     const s = this.core.state;
     if (!s?.appState?.selectedPaths) return [];
     return s.appState.selectedPaths.map(index => s.appState.paths[index]).filter(path => path);
+  }
+  
+  getSelectedImages() {
+    const s = this.core.state;
+    if (!s?.appState?.selectedImages || !s?.appState?.images) return [];
+    return s.appState.selectedImages.map(index => s.appState.images[index]).filter(img => img);
+  }
+  
+  findImageAtPoint(worldX, worldY) {
+    const images = this.core.state.appState.images;
+    if (!images || !Array.isArray(images)) return -1;
+    
+    // Check from top to bottom (reverse order for z-index)
+    for (let i = images.length - 1; i >= 0; i--) {
+      const img = images[i];
+      if (!img.visible) continue;
+      
+      // Simple bounding box check
+      if (worldX >= img.x && worldX <= img.x + img.width &&
+          worldY >= img.y && worldY <= img.y + img.height) {
+        return i;
+      }
+    }
+    
+    return -1;
+  }
+  
+  moveSelectedImages(dx, dy) {
+    const s = this.core.state.appState;
+    if (!s.selectedImages || s.selectedImages.length === 0) return;
+    
+    s.selectedImages.forEach(index => {
+      const img = s.images[index];
+      if (img && !img.locked) {
+        img.x += dx;
+        img.y += dy;
+      }
+    });
+  }
+  
+  calculateCombinedBounds() {
+    const pathBounds = this.calculateBounds(this.getSelectedPaths());
+    const imageBounds = this.calculateImageBounds(this.getSelectedImages());
+    
+    if (!pathBounds && !imageBounds) return null;
+    if (!pathBounds) return imageBounds;
+    if (!imageBounds) return pathBounds;
+    
+    return {
+      minX: Math.min(pathBounds.minX, imageBounds.minX),
+      minY: Math.min(pathBounds.minY, imageBounds.minY),
+      maxX: Math.max(pathBounds.maxX, imageBounds.maxX),
+      maxY: Math.max(pathBounds.maxY, imageBounds.maxY)
+    };
+  }
+  
+  calculateImageBounds(selectedImages) {
+    if (!selectedImages || selectedImages.length === 0) return null;
+    
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    
+    selectedImages.forEach(img => {
+      if (img) {
+        minX = Math.min(minX, img.x);
+        minY = Math.min(minY, img.y);
+        maxX = Math.max(maxX, img.x + img.width);
+        maxY = Math.max(maxY, img.y + img.height);
+      }
+    });
+    
+    if (minX === Infinity) return null;
+    
+    return { minX, minY, maxX, maxY };
   }
   
   findPathAtPoint(worldX, worldY) {
@@ -522,6 +608,8 @@ export class SelectionTool {
     const scaleY = newHeight / originalHeight;
     
     const s = this.core.state;
+    
+    // Resize paths
     s.appState.selectedPaths.forEach((index, i) => {
       const path = s.appState.paths[index];
       const initialPath = initialPaths[i];
@@ -537,6 +625,24 @@ export class SelectionTool {
         }
       }
     });
+    
+    // Resize images
+    if (this.initialImages && s.appState.selectedImages) {
+      s.appState.selectedImages.forEach((index, i) => {
+        const img = s.appState.images[index];
+        const initialImg = this.initialImages[i];
+        
+        if (img && initialImg) {
+          const relX = initialImg.x - initialBounds.minX;
+          const relY = initialImg.y - initialBounds.minY;
+          
+          img.x = newBounds.minX + relX * scaleX;
+          img.y = newBounds.minY + relY * scaleY;
+          img.width = initialImg.width * scaleX;
+          img.height = initialImg.height * scaleY;
+        }
+      });
+    }
   }
   
   calculateNewBounds(currentPoint, handleType, initialBounds) {
@@ -625,6 +731,188 @@ export class SelectionTool {
 export function initializeTools(coreInstance) {
   coreInstance.state.tools.pan = new PanTool(coreInstance);
   coreInstance.state.tools.selection = new SelectionTool(coreInstance);
+  coreInstance.state.tools.image = new ImageTool(coreInstance);
   
-  notify('info', 'Tools restored and initialized with complete functionality.');
+  notify('info', 'Tools restored and initialized with complete functionality including image support.');
+}
+
+// ============================================================================
+// IMAGE TOOL - Image Placement, Selection, and Transformation
+// ============================================================================
+
+export class ImageTool {
+  constructor(coreInstance) {
+    this.core = coreInstance;
+    this.defaultImagePosition = { x: 100, y: 100 };
+  }
+  
+  /**
+   * Add an image to the canvas
+   * @param {HTMLImageElement} img - The loaded image element
+   * @param {string} filename - Original filename
+   */
+  addImageToCanvas(img, filename = 'image.png') {
+    if (!this.core || !this.core.state || !this.core.state.appState) {
+      console.error('[ImageTool] Core or appState not available');
+      return;
+    }
+    
+    const s = this.core.state.appState;
+    
+    // Initialize images array if it doesn't exist
+    if (!s.images) {
+      s.images = [];
+    }
+    
+    // Calculate placement position
+    // If there are existing images, offset the new one slightly
+    const offset = s.images.length * 20;
+    const x = this.defaultImagePosition.x + offset;
+    const y = this.defaultImagePosition.y + offset;
+    
+    // Create image data object
+    const imageData = {
+      id: `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      src: img.src, // Data URL
+      filename: filename,
+      x: x,
+      y: y,
+      width: img.width,
+      height: img.height,
+      originalWidth: img.width,
+      originalHeight: img.height,
+      rotation: 0,
+      opacity: 1,
+      visible: true,
+      locked: false,
+      layer: s.activeLayer || 0,
+      zIndex: s.images.length
+    };
+    
+    console.log('[ImageTool] Adding image to canvas:', {
+      id: imageData.id,
+      filename: imageData.filename,
+      position: { x: imageData.x, y: imageData.y },
+      size: { width: imageData.width, height: imageData.height },
+      layer: imageData.layer,
+      totalImages: s.images.length + 1
+    });
+    
+    // Add to images array
+    s.images.push(imageData);
+    
+    // Clear path selection and select this image
+    s.selectedPaths = [];
+    s.selectedImages = [s.images.length - 1];
+    
+    // Mark as modified
+    s.isModified = true;
+    
+    // Render the canvas
+    if (this.core.renderCanvas) {
+      this.core.renderCanvas();
+    }
+    
+    console.log('[ImageTool] Image added successfully. Total images:', s.images.length);
+  }
+  
+  /**
+   * Get the image at a specific world coordinate
+   * @param {number} worldX - World X coordinate
+   * @param {number} worldY - World Y coordinate
+   * @returns {number} Index of the image, or -1 if not found
+   */
+  getImageAt(worldX, worldY) {
+    const s = this.core.state.appState;
+    if (!s.images || s.images.length === 0) return -1;
+    
+    // Check from top to bottom (reverse order for z-index)
+    for (let i = s.images.length - 1; i >= 0; i--) {
+      const img = s.images[i];
+      if (!img.visible) continue;
+      
+      // Simple bounding box check
+      if (worldX >= img.x && worldX <= img.x + img.width &&
+          worldY >= img.y && worldY <= img.y + img.height) {
+        return i;
+      }
+    }
+    
+    return -1;
+  }
+  
+  /**
+   * Move selected images by a delta
+   * @param {number} dx - Delta X
+   * @param {number} dy - Delta Y
+   */
+  moveSelectedImages(dx, dy) {
+    const s = this.core.state.appState;
+    if (!s.selectedImages || s.selectedImages.length === 0) return;
+    
+    s.selectedImages.forEach(index => {
+      const img = s.images[index];
+      if (img && !img.locked) {
+        img.x += dx;
+        img.y += dy;
+      }
+    });
+    
+    s.isModified = true;
+  }
+  
+  /**
+   * Resize selected images
+   * @param {object} newBounds - New bounding box { minX, minY, maxX, maxY }
+   * @param {object} originalBounds - Original bounding box
+   */
+  resizeSelectedImages(newBounds, originalBounds) {
+    const s = this.core.state.appState;
+    if (!s.selectedImages || s.selectedImages.length === 0) return;
+    
+    const scaleX = (newBounds.maxX - newBounds.minX) / (originalBounds.maxX - originalBounds.minX);
+    const scaleY = (newBounds.maxY - newBounds.minY) / (originalBounds.maxY - originalBounds.minY);
+    
+    s.selectedImages.forEach(index => {
+      const img = s.images[index];
+      if (img && !img.locked) {
+        // Calculate relative position within original bounds
+        const relX = img.x - originalBounds.minX;
+        const relY = img.y - originalBounds.minY;
+        
+        // Apply scale and new position
+        img.x = newBounds.minX + relX * scaleX;
+        img.y = newBounds.minY + relY * scaleY;
+        img.width = img.width * scaleX;
+        img.height = img.height * scaleY;
+      }
+    });
+    
+    s.isModified = true;
+  }
+  
+  /**
+   * Calculate bounds for selected images
+   * @returns {object|null} Bounding box or null
+   */
+  calculateSelectedImagesBounds() {
+    const s = this.core.state.appState;
+    if (!s.selectedImages || s.selectedImages.length === 0) return null;
+    
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    
+    s.selectedImages.forEach(index => {
+      const img = s.images[index];
+      if (img) {
+        minX = Math.min(minX, img.x);
+        minY = Math.min(minY, img.y);
+        maxX = Math.max(maxX, img.x + img.width);
+        maxY = Math.max(maxY, img.y + img.height);
+      }
+    });
+    
+    if (minX === Infinity) return null;
+    
+    return { minX, minY, maxX, maxY };
+  }
 }
