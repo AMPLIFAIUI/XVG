@@ -5,23 +5,9 @@
   "identifier": "com.xvg.editor",
   "build": {
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build",
     "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
-  },
-  "app": {
-    "security": {
-      "csp": null
-    },
-    "windows": [
-      {
-        "title": "XVG Editor",
-        "width": 1200,
-        "height": 800,
-        "resizable": true,
-        "fullscreen": false
-      }
-    ]
   },
   "bundle": {
     "active": true,
@@ -32,7 +18,12 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": null
+    }
   },
   "plugins": {
     "dialog": {
@@ -41,6 +32,20 @@
     "fs": {
       "all": true,
       "scope": ["**"]
+    }
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "XVG Editor",
+        "width": 1200,
+        "height": 800,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
     }
   }
 }
