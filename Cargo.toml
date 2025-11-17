@@ -6,6 +6,7 @@ members = [
     "xvg-py",
     "xvg-ffi",
     "xvg-wasm",
+    "xvg-thumbnail-handler",
 ]
 exclude = [
 ]
