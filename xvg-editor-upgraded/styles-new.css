@@ -1,0 +1,329 @@
+:root {
+    --accent-color: #007bff; /* Vibrant Electric Blue */
+    --accent-color-dark: #0056b3;
+    --background-dark: #1a1a1a;
+    --background-medium: #2a2a2a;
+    --background-light: #3a3a3a;
+    --border-color: #4a4a4a;
+    --z-canvas-wrapper: 10;
+    --z-guides: 50;
+    --z-selection-overlay: 100;
+    --z-resize-handles: 200;
+    --z-ruler-corner: 10000;
+    --z-notifications: 9999;
+    --z-dialogs: 10000;
+    
+    --ruler-size: 30px;
+    --grid-spacing: 20px;
+    --toolbar-gap: 4px;
+    --button-size: 40px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--background-dark);
+    color: #ffffff;
+    overflow: hidden;
+}
+
+.app-container {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    grid-template-columns: 60px 1fr 280px; /* Left Sidebar (Tools), Main Content, Right Sidebar (Panels) */
+    grid-template-areas:
+        "menu-bar menu-bar menu-bar"
+        "left-sidebar main-content right-sidebar";
+    height: 100vh;
+    width: 100vw;
+    background: var(--background-dark);
+}
+
+/* Menu Bar */
+.menu-bar {
+    grid-area: menu-bar;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: var(--background-medium);
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.menu-group {
+    display: flex;
+    gap: 8px;
+    position: absolute;
+    left: 16px;
+}
+
+.menu-center-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.center-logo {
+    height: 32px;
+    width: auto;
+    opacity: 0.8;
+    transition: opacity 0.2s ease;
+}
+
+.center-logo:hover {
+    opacity: 1;
+}
+
+.menu-item {
+    background: var(--background-light);
+    border: 1px solid var(--border-color);
+    color: #ffffff;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.menu-item:hover {
+    background: var(--background-light);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.menu-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.menu-content {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: var(--background-medium);
+    min-width: 200px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    z-index: 10002;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    padding: 4px 0;
+}
+
+.menu-content.show {
+    display: block;
+}
+
+.menu-option {
+    display: block;
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: #ffffff;
+    padding: 10px 20px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.menu-option:hover {
+    background: var(--background-light);
+    color: var(--accent-color);
+}
+
+.menu-separator {
+    height: 1px;
+    background: var(--border-color);
+    margin: 4px 0;
+}
+
+/* Left Sidebar (Vertical Tool Bar) */
+.left-sidebar {
+    grid-area: left-sidebar;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--background-medium);
+    border-right: 1px solid var(--border-color);
+    padding: 10px 0;
+    gap: 8px;
+    overflow-y: auto;
+}
+
+.toolbar {
+    display: none; /* Hide old horizontal toolbar */
+}
+
+.toolbar-btn {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    align-items: center;
+    justify-items: center;
+    width: 45px;
+    height: 45px;
+    padding: 0;
+    background: var(--background-light);
+    border: 1px solid var(--border-color);
+    color: #ffffff;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.toolbar-btn:hover {
+    background: var(--background-light);
+    border-color: var(--accent-color);
+    transform: scale(1.05);
+}
+
+.toolbar-btn.active {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+.tool-icon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+    pointer-events: none;
+}
+
+/* Main Content */
+.main-content {
+    grid-area: main-content;
+    position: relative;
+    overflow: hidden;
+    background: var(--background-dark);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Right Sidebar (Panels) */
+.right-sidebar {
+    grid-area: right-sidebar;
+    background: var(--background-medium);
+    border-left: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.panel-container {
+    position: relative;
+    width: 100%;
+    height: auto;
+    background: transparent;
+    border-left: none;
+    box-shadow: none;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    transition: none;
+    transform: none;
+    padding: 0;
+}
+
+.panel-header {
+    background: var(--background-light);
+    color: #ffffff;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.panel-content {
+    padding: 12px;
+    background: var(--background-medium);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.panel-btn {
+    background: var(--background-light);
+    border: 1px solid var(--border-color);
+    color: #ffffff;
+    padding: 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    width: 100%;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.panel-btn:hover {
+    background: var(--background-light);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.panel-btn img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+    transition: filter 0.15s ease;
+}
+
+.panel-btn:hover img {
+    filter: brightness(0) invert(1) drop-shadow(0 0 2px var(--accent-color));
+}
+
+/* XVG Engines Section */
+.xvg-engines-panel {
+    padding: 12px;
+}
+
+.xvg-engines-panel h3 {
+    color: var(--accent-color);
+    font-size: 16px;
+    margin-bottom: 12px;
+}
+
+.engine-btn {
+    background: var(--background-light);
+    border: 1px solid var(--border-color);
+    color: #ffffff;
+    padding: 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    width: 100%;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.engine-btn:hover {
+    background: var(--background-light);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.engine-icon {
+    width: 24px;
+    height: 24px;
+    color: var(--accent-color);
+    font-size: 24px;
+}

@@ -1,0 +1,21 @@
+{
+  "name": "xvg-wasm",
+  "type": "module",
+  "collaborators": [
+    "xvg-team"
+  ],
+  "version": "1.0.0",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/amplifaiui/xvg-tesseract"
+  },
+  "files": [
+    "xvg_wasm_bg.wasm",
+    "xvg_wasm.js"
+  ],
+  "main": "xvg_wasm.js",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

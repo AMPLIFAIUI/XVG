@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XVG Asset Management Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #1a1a1a;
+            color: #ffffff;
+        }
+        
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .dashboard-header {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #4A9B8F;
+        }
+        
+        .stat-card h3 {
+            margin: 0 0 10px 0;
+            color: #4A9B8F;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #ccc;
+            font-size: 0.9em;
+        }
+        
+        .controls-section {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .control-group label {
+            color: #ccc;
+            font-size: 0.9em;
+        }
+        
+        button {
+            background: #4A9B8F;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #3a8b7f;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: #4A9B8F;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        
+        .asset-list {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .asset-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: #333;
+            border-radius: 4px;
+        }
+        
+        .asset-info {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .asset-name {
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        .asset-details {
+            font-size: 0.8em;
+            color: #ccc;
+        }
+        
+        .asset-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        
+        .status-loaded {
+            background: #28a745;
+            color: white;
+        }
+        
+        .status-loading {
+            background: #ffc107;
+            color: black;
+        }
+        
+        .status-failed {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .status-cached {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .recommendations {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        
+        .recommendation-item {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 4px solid #ffc107;
+            background: rgba(255, 193, 7, 0.1);
+        }
+        
+        .recommendation-high {
+            border-left-color: #dc3545;
+            background: rgba(220, 53, 69, 0.1);
+        }
+        
+        .recommendation-medium {
+            border-left-color: #ffc107;
+            background: rgba(255, 193, 7, 0.1);
+        }
+        
+        .recommendation-low {
+            border-left-color: #28a745;
+            background: rgba(40, 167, 69, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <h1>📦 XVG Asset Management Dashboard</h1>
+            <p>Monitor and optimize asset loading performance</p>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Cache Performance</h3>
+                <div class="stat-value" id="cache-hit-rate">0%</div>
+                <div class="stat-label">Cache Hit Rate</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>Load Performance</h3>
+                <div class="stat-value" id="avg-load-time">0ms</div>
+                <div class="stat-label">Average Load Time</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>Asset Count</h3>
+                <div class="stat-value" id="total-assets">0</div>
+                <div class="stat-label">Total Assets</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>Compression</h3>
+                <div class="stat-value" id="compression-savings">0%</div>
+                <div class="stat-label">Size Reduction</div>
+            </div>
+        </div>
+        
+        <div class="controls-section">
+            <h3>Asset Management Controls</h3>
+            <div class="controls-grid">
+                <div class="control-group">
+                    <label>Compression</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="compression-toggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <div class="control-group">
+                    <label>Lazy Loading</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="lazy-loading-toggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <div class="control-group">
+                    <label>Monitoring</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="monitoring-toggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <div class="control-group">
+                    <label>Actions</label>
+                    <button onclick="clearCache()">Clear Cache</button>
+                    <button onclick="updateVersions()">Update Versions</button>
+                    <button onclick="preloadCritical()">Preload Critical</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="asset-list">
+            <h3>Asset Status</h3>
+            <div id="asset-list-content">
+                <p>Loading asset information...</p>
+            </div>
+        </div>
+        
+        <div class="recommendations">
+            <h3>Optimization Recommendations</h3>
+            <div id="recommendations-content">
+                <p>Analyzing asset performance...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load XVG modules -->
+    <script src="../pkg/xvg-utilities.js"></script>
+    <script src="../pkg/xvg-asset-manager.js"></script>
+    <script src="../pkg/xvg-asset-optimizer.js"></script>
+    <script src="../pkg/xvg-core.js"></script>
+
+    <script>
+        // Asset dashboard functionality
+        let updateInterval = null;
+        
+        function updateDashboard() {
+            const stats = window.getAssetStats();
+            if (!stats) {
+                console.warn('Asset stats not available');
+                return;
+            }
+            
+            // Update cache hit rate
+            const hitRate = stats.totalRequests > 0 ? 
+                (stats.cacheHits / stats.totalRequests * 100).toFixed(1) : 0;
+            document.getElementById('cache-hit-rate').textContent = hitRate + '%';
+            
+            // Update average load time
+            document.getElementById('avg-load-time').textContent = 
+                Math.round(stats.averageLoadTime) + 'ms';
+            
+            // Update total assets
+            document.getElementById('total-assets').textContent = 
+                stats.cacheSize + stats.preloadedCount;
+            
+            // Update compression savings
+            const compressionSavings = stats.compressionSavings > 0 ? 
+                stats.compressionSavings.toFixed(1) : 0;
+            document.getElementById('compression-savings').textContent = 
+                compressionSavings + '%';
+            
+            // Update asset list
+            updateAssetList(stats);
+            
+            // Update recommendations
+            updateRecommendations(stats);
+        }
+        
+        function updateAssetList(stats) {
+            const assetListContent = document.getElementById('asset-list-content');
+            
+            // This would be populated with actual asset data
+            const mockAssets = [
+                { name: 'xvgicon.png', status: 'loaded', size: '2.3KB', loadTime: '45ms' },
+                { name: 'icons8-add-100.png', status: 'cached', size: '1.2KB', loadTime: '12ms' },
+                { name: 'sunset.jpg', status: 'loaded', size: '156KB', loadTime: '234ms' },
+                { name: 'gold4.png', status: 'loading', size: '8.7KB', loadTime: '0ms' }
+            ];
+            
+            assetListContent.innerHTML = mockAssets.map(asset => `
+                <div class="asset-item">
+                    <div class="asset-info">
+                        <div class="asset-name">${asset.name}</div>
+                        <div class="asset-details">${asset.size} • ${asset.loadTime}</div>
+                    </div>
+                    <div class="asset-status status-${asset.status}">
+                        ${asset.status.toUpperCase()}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function updateRecommendations(stats) {
+            const recommendationsContent = document.getElementById('recommendations-content');
+            const recommendations = [];
+            
+            if (stats.cacheHitRate < 50) {
+                recommendations.push({
+                    type: 'high',
+                    message: 'Low cache hit rate - consider implementing better caching strategy',
+                    priority: 'high'
+                });
+            }
+            
+            if (stats.averageLoadTime > 1000) {
+                recommendations.push({
+                    type: 'high',
+                    message: 'Slow average load time - consider asset optimization',
+                    priority: 'high'
+                });
+            }
+            
+            if (stats.compressionSavings < 20) {
+                recommendations.push({
+                    type: 'medium',
+                    message: 'Low compression savings - enable WebP/AVIF formats',
+                    priority: 'medium'
+                });
+            }
+            
+            if (recommendations.length === 0) {
+                recommendations.push({
+                    type: 'low',
+                    message: 'Asset performance is optimal',
+                    priority: 'low'
+                });
+            }
+            
+            recommendationsContent.innerHTML = recommendations.map(rec => `
+                <div class="recommendation-item recommendation-${rec.type}">
+                    <strong>${rec.priority.toUpperCase()}</strong>: ${rec.message}
+                </div>
+            `).join('');
+        }
+        
+        // Control functions
+        function clearCache() {
+            window.clearAssetCache();
+            notify('Cache cleared', 'success');
+        }
+        
+        function updateVersions() {
+            window.updateAssetVersions();
+            notify('Asset versions updated', 'success');
+        }
+        
+        function preloadCritical() {
+            // This would trigger preloading of critical assets
+            notify('Critical assets preloaded', 'success');
+        }
+        
+        function notify(message, type = 'info') {
+            // Simple notification system
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#17a2b8'};
+                color: white;
+                padding: 12px 16px;
+                border-radius: 4px;
+                z-index: 10000;
+                font-size: 14px;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+        
+        // Set up toggle controls
+        document.getElementById('compression-toggle').addEventListener('change', (e) => {
+            window.enableAssetCompression(e.target.checked);
+            notify(`Compression ${e.target.checked ? 'enabled' : 'disabled'}`, 'info');
+        });
+        
+        document.getElementById('lazy-loading-toggle').addEventListener('change', (e) => {
+            window.enableAssetLazyLoading(e.target.checked);
+            notify(`Lazy loading ${e.target.checked ? 'enabled' : 'disabled'}`, 'info');
+        });
+        
+        document.getElementById('monitoring-toggle').addEventListener('change', (e) => {
+            window.enableAssetMonitoring(e.target.checked);
+            notify(`Monitoring ${e.target.checked ? 'enabled' : 'disabled'}`, 'info');
+        });
+        
+        // Initialize dashboard
+        function initializeDashboard() {
+            updateDashboard();
+            
+            // Update dashboard every 5 seconds
+            updateInterval = setInterval(updateDashboard, 5000);
+            
+            console.log('Asset Management Dashboard initialized');
+        }
+        
+        // Start dashboard when page loads
+        window.addEventListener('load', () => {
+            setTimeout(initializeDashboard, 1000);
+        });
+        
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+        });
+    </script>
+</body>
+</html>

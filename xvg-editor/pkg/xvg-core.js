@@ -259,7 +259,11 @@ export class XVGCore {
     
     ctx.clearRect(0,0,c.width,c.height);
     this.renderDocument(); // Use the new zero-conversion runtime render
-    this.drawIndependentGrid(ctx); 
+    this.drawIndependentGrid(ctx);
+    
+    // Update rulers after rendering
+    if (window.updateTopRuler) window.updateTopRuler();
+    if (window.updateLeftRuler) window.updateLeftRuler();
   }
   
   getCanvasPointFromEvent(e) {
@@ -300,7 +304,76 @@ export class XVGCore {
   }
   
   drawIndependentGrid(ctx) {
-    console.log('Draw Independent Grid (placeholder)');
+    const grid = this.state.appState.grid;
+    if (!grid || !grid.visible) return;
+
+    const canvas = this.state.canvas.element;
+    const transform = this.state.appState.canvasTransform;
+    
+    ctx.save();
+    
+    // Get viewport dimensions
+    const viewportWidth = canvas.width;
+    const viewportHeight = canvas.height;
+    
+    // Calculate visible area in world coordinates
+    const startX = -transform.pan_x / transform.zoom;
+    const startY = -transform.pan_y / transform.zoom;
+    const endX = startX + (viewportWidth / transform.zoom);
+    const endY = startY + (viewportHeight / transform.zoom);
+    
+    // Draw minor grid lines
+    if (grid.minorSpacing > 0) {
+      ctx.strokeStyle = grid.minorLineColor || '#303030';
+      ctx.lineWidth = grid.minorLineWidth || 1;
+      ctx.beginPath();
+      
+      // Vertical minor lines
+      const minorStartX = Math.floor(startX / grid.minorSpacing) * grid.minorSpacing;
+      for (let x = minorStartX; x <= endX; x += grid.minorSpacing) {
+        const screenX = (x * transform.zoom) + transform.pan_x;
+        ctx.moveTo(screenX, 0);
+        ctx.lineTo(screenX, viewportHeight);
+      }
+      
+      // Horizontal minor lines
+      const minorStartY = Math.floor(startY / grid.minorSpacing) * grid.minorSpacing;
+      for (let y = minorStartY; y <= endY; y += grid.minorSpacing) {
+        const screenY = (y * transform.zoom) + transform.pan_y;
+        ctx.moveTo(0, screenY);
+        ctx.lineTo(viewportWidth, screenY);
+      }
+      
+      ctx.stroke();
+    }
+    
+    // Draw major grid lines
+    if (grid.majorSpacing > 0) {
+      ctx.strokeStyle = grid.majorLineColor || '#000000';
+      ctx.lineWidth = grid.majorLineWidth || 1.5;
+      ctx.beginPath();
+      
+      // Vertical major lines
+      const majorStartX = Math.floor(startX / grid.majorSpacing) * grid.majorSpacing;
+      for (let x = majorStartX; x <= endX; x += grid.majorSpacing) {
+        const screenX = (x * transform.zoom) + transform.pan_x;
+        ctx.moveTo(screenX, 0);
+        ctx.lineTo(screenX, viewportHeight);
+      }
+      
+      // Horizontal major lines
+      const majorStartY = Math.floor(startY / grid.majorSpacing) * grid.majorSpacing;
+      for (let y = majorStartY; y <= endY; y += grid.majorSpacing) {
+        const screenY = (y * transform.zoom) + transform.pan_y;
+        ctx.moveTo(0, screenY);
+        ctx.lineTo(viewportWidth, screenY);
+      }
+      
+      ctx.stroke();
+    }
+    
+    ctx.restore();
+    console.log('[GRID] Grid rendered successfully')
   }
   
   drawPaths() {

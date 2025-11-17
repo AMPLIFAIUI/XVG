@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XVG Module Loading Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #1a1a1a; color: #fff; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #333; border-radius: 5px; }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .warning { color: #ff9800; }
+        .info { color: #2196F3; }
+        pre { background: #2a2a2a; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>XVG Module Loading Test</h1>
+    
+    <div class="test-section">
+        <h3>Module Loading Status</h3>
+        <div id="module-status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Console Output</h3>
+        <pre id="console-output"></pre>
+    </div>
+
+    <!-- Initialize module loading system -->
+    <script>
+        // Initialize module loading system
+        window.XVGModuleLoader = {
+            modules: {
+                utilities: { loaded: false, dependencies: [] },
+                engines: { loaded: false, dependencies: ['utilities'] },
+                core: { loaded: false, dependencies: ['utilities', 'engines'] },
+                tools: { loaded: false, dependencies: ['utilities', 'core'] },
+                dom: { loaded: false, dependencies: [] }
+            },
+            
+            markModuleLoaded: function(moduleName) {
+                if (this.modules[moduleName]) {
+                    this.modules[moduleName].loaded = true;
+                    console.log(`✅ Module ${moduleName} loaded`);
+                    this.updateStatus();
+                    this.checkAllModulesReady();
+                }
+            },
+            
+            checkAllModulesReady: function() {
+                const allReady = Object.values(this.modules).every(module => module.loaded);
+                if (allReady && !this.allModulesReady) {
+                    this.allModulesReady = true;
+                    console.log('✅ All modules ready, initializing XVG system...');
+                    this.initializeXVGSystem();
+                }
+            },
+            
+            initializeXVGSystem: function() {
+                console.log('🎉 XVG System initialization triggered!');
+                document.getElementById('module-status').innerHTML += '<div class="success">🎉 XVG System initialization triggered!</div>';
+            },
+            
+            updateStatus: function() {
+                const statusDiv = document.getElementById('module-status');
+                statusDiv.innerHTML = '';
+                
+                for (const [name, module] of Object.entries(this.modules)) {
+                    const status = module.loaded ? '✅' : '⏳';
+                    const color = module.loaded ? 'success' : 'warning';
+                    statusDiv.innerHTML += `<div class="${color}">${status} ${name}</div>`;
+                }
+            }
+        };
+        
+        // Capture console output
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+        
+        function addToOutput(type, ...args) {
+            const output = document.getElementById('console-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)).join(' ');
+            output.textContent += `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToOutput('log', ...args);
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            addToOutput('warn', ...args);
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToOutput('error', ...args);
+        };
+        
+        // Initialize status display
+        window.XVGModuleLoader.updateStatus();
+    </script>
+    
+    <!-- Load modules with proper dependency management -->
+    <script src="pkg/xvg-utilities.js" onload="window.XVGModuleLoader.markModuleLoaded('utilities')"></script>
+    <script src="pkg/xvg-engine-integration.js" onload="window.XVGModuleLoader.markModuleLoaded('engines')"></script>
+    <script src="pkg/xvg-core.js" onload="window.XVGModuleLoader.markModuleLoaded('core')"></script>
+    <script src="pkg/xvg-tools.js" onload="window.XVGModuleLoader.markModuleLoaded('tools')"></script>
+    
+    <!-- Mark DOM as ready -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.XVGModuleLoader) {
+                window.XVGModuleLoader.markModuleLoaded('dom');
+            }
+        });
+    </script>
+</body>
+</html>

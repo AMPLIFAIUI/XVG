@@ -25,6 +25,15 @@
       "timestampUrl": null
     }
   },
+  "plugins": {
+    "dialog": {
+      "all": true
+    },
+    "fs": {
+      "all": true,
+      "scope": ["**"]
+    }
+  },
   "app": {
     "windows": [
       {

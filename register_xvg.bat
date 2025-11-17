@@ -18,7 +18,7 @@ if %errorLevel% neq 0 (
 
 REM Get the current directory
 set "CURRENT_DIR=%~dp0"
-set "EXE_PATH=%CURRENT_DIR%target\release\xvg-desktop.exe"
+set "EXE_PATH=%CURRENT_DIR%xvg-desktop\src-tauri\target\release\xvg-desktop.exe"
 set "ICON_SOURCE=%CURRENT_DIR%assets\xvgicon.ico"
 set "ICON_DEST=%SystemRoot%\System32\xvgicon.ico"
 

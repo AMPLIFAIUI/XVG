@@ -9,73 +9,104 @@
     <link rel="icon" type="image/png" href="assets/XVGLOGO.png">
     <link rel="stylesheet" href="styles.css">
     <script type="module">
-      // Bootstrap WASM early and expose the initialized module
-      import init, * as xvg from './modules/xvg_wasm.js';
+      // Detect Tauri environment
+      const isTauri = window.__TAURI__ !== undefined;
       
-      // Suppress console warnings during WASM initialization
-      const originalWarn = console.warn;
-      console.warn = function(...args) {
-        if (args[0] && args[0].includes && args[0].includes('deprecated parameters')) {
-          // Ignore this specific warning
-          return;
-        }
-        originalWarn.apply(console, args);
-      };
-      
-      try {
-        // Try multiple possible paths for the WASM file
-        const wasmPaths = [
-          './modules/xvg_wasm_bg.wasm',
-          './modules/xvg_wasm.wasm',
-          'modules/xvg_wasm_bg.wasm',
-          'modules/xvg_wasm.wasm',
-          '../xvg_wasm_bg.wasm',
-          './xvg_wasm_bg.wasm'
-        ];
+      if (isTauri) {
+        // TAURI DESKTOP APP MODE
+        console.log('🖥️ Running in Tauri Desktop App');
         
-        let wasmLoaded = false;
-        for (const path of wasmPaths) {
-          try {
-            await init(path);
-            console.log('WASM loaded from:', path);
-            wasmLoaded = true;
-            break;
-          } catch (pathError) {
-            console.warn('Failed to load WASM from', path, pathError.message);
+        // Load Tauri adapter to replace WASM with native backend
+        try {
+          const tauriAdapter = await import('./src-web/tauri-adapter.js');
+          tauriAdapter.initializeTauriAdapter();
+          console.log('✅ Tauri adapter initialized - using native Rust backend');
+          
+          // Signal that the runtime is ready (Tauri backend instead of WASM)
+          window.dispatchEvent(new CustomEvent('xvg-wasm-ready', { detail: { ok: true, tauri: true } }));
+          
+          // Load engine integration
+          const s = document.createElement('script');
+          s.src = './pkg/xvg-engine-integration.js';
+          s.onload = () => console.log('xvg-engine-integration loaded (Tauri mode)');
+          s.onerror = (e) => console.error('failed to load xvg-engine-integration.js', e);
+          document.head.appendChild(s);
+        } catch (err) {
+          console.error('❌ Tauri adapter initialization failed:', err);
+          window.dispatchEvent(new CustomEvent('xvg-wasm-ready', { detail: { ok: false, error: err.message } }));
+        }
+      } else {
+        // WEB BROWSER MODE
+        console.log('🌐 Running in Web Browser');
+        
+        // Bootstrap WASM early and expose the initialized module
+        const { default: init, ...xvg } = await import('./modules/xvg_wasm.js');
+        
+        // Suppress console warnings during WASM initialization
+        const originalWarn = console.warn;
+        console.warn = function(...args) {
+          if (args[0] && args[0].includes && args[0].includes('deprecated parameters')) {
+            // Ignore this specific warning
+            return;
           }
-        }
+          originalWarn.apply(console, args);
+        };
         
-        if (!wasmLoaded) {
-          throw new Error('Could not load WASM from any of the attempted paths');
-        }
-        
-        // Restore console.warn
-        console.warn = originalWarn;
-        
-        // Expose the module with constructors (XVGFile, XVGRenderer, ...)
-        window.xvg_wasm = xvg;
-        window.dispatchEvent(new CustomEvent('xvg-wasm-ready', { detail: { ok: true } }));
-        console.log('WASM module initialized successfully');
+        try {
+          // Try multiple possible paths for the WASM file
+          const wasmPaths = [
+            './modules/xvg_wasm_bg.wasm',
+            './modules/xvg_wasm.wasm',
+            'modules/xvg_wasm_bg.wasm',
+            'modules/xvg_wasm.wasm',
+            '../xvg_wasm_bg.wasm',
+            './xvg_wasm_bg.wasm'
+          ];
+          
+          let wasmLoaded = false;
+          for (const path of wasmPaths) {
+            try {
+              await init(path);
+              console.log('WASM loaded from:', path);
+              wasmLoaded = true;
+              break;
+            } catch (pathError) {
+              console.warn('Failed to load WASM from', path, pathError.message);
+            }
+          }
+          
+          if (!wasmLoaded) {
+            throw new Error('Could not load WASM from any of the attempted paths');
+          }
+          
+          // Restore console.warn
+          console.warn = originalWarn;
+          
+          // Expose the module with constructors (XVGFile, XVGRenderer, ...)
+          window.xvg_wasm = xvg;
+          window.dispatchEvent(new CustomEvent('xvg-wasm-ready', { detail: { ok: true, tauri: false } }));
+          console.log('WASM module initialized successfully');
 
-        // Load engine integration only after WASM is ready
-        const s = document.createElement('script');
-        s.src = './pkg/xvg-engine-integration.js';
-        s.onload = () => console.log('xvg-engine-integration loaded');
-        s.onerror = (e) => console.error('failed to load xvg-engine-integration.js', e);
-        document.head.appendChild(s);
+          // Load engine integration only after WASM is ready
+          const s = document.createElement('script');
+          s.src = './pkg/xvg-engine-integration.js';
+          s.onload = () => console.log('xvg-engine-integration loaded (WASM mode)');
+          s.onerror = (e) => console.error('failed to load xvg-engine-integration.js', e);
+          document.head.appendChild(s);
 
-        // Optional smoke test in console
-        if (xvg.XVGFile) {
-          const f = new xvg.XVGFile(256, 256);
-          console.log('XVGFile ready, path_count=', f.path_count);
+          // Optional smoke test in console
+          if (xvg.XVGFile) {
+            const f = new xvg.XVGFile(256, 256);
+            console.log('XVGFile ready, path_count=', f.path_count);
+          }
+        } catch (err) {
+          // Restore console.warn
+          console.warn = originalWarn;
+          console.error('WASM initialization failed', err);
+          // Continue without WASM - the editor should still work for basic functionality
+          window.xvg_wasm = null;
+          window.dispatchEvent(new CustomEvent('xvg-wasm-ready', { detail: { ok: false, error: err.message } }));
         }
-      } catch (err) {
-        // Restore console.warn
-        console.warn = originalWarn;
-        console.error('WASM initialization failed', err);
-        // Continue without WASM - the editor should still work for basic functionality
-        window.xvg_wasm = null;
-        window.dispatchEvent(new CustomEvent('xvg-wasm-ready', { detail: { ok: false, error: err.message } }));
       }
     </script>
 </head>

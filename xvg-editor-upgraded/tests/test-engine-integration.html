@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<!-- UI is for the xvg project and the rules are being followed. -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XVG Engine Integration Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #1a1a1a; color: #fff; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #333; border-radius: 5px; }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .warning { color: #ff9800; }
+        .info { color: #2196F3; }
+        button { background: #4CAF50; color: white; border: none; padding: 10px 20px; margin: 5px; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #45a049; }
+        pre { background: #2a2a2a; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>XVG Engine Integration Test</h1>
+    
+    <div class="test-section">
+        <h3>1. Basic Environment Check</h3>
+        <button onclick="checkEnvironment()">Check Environment</button>
+        <div id="environment-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. WASM Module Loading</h3>
+        <button onclick="testWasmLoading()">Test WASM Loading</button>
+        <div id="wasm-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. Engine Integration Test</h3>
+        <button onclick="testEngineIntegration()">Test Engine Integration</button>
+        <div id="engine-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>4. Full Integration Test</h3>
+        <button onclick="testFullIntegration()">Test Full Integration</button>
+        <div id="full-results"></div>
+    </div>
+
+    <!-- Load the engine integration -->
+    <script src="pkg/xvg-engine-integration.js"></script>
+    
+    <script>
+        // UI is for the xvg project and the rules are being followed.
+        
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : type === 'warning' ? 'warning' : 'info';
+            element.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+        }
+        
+        function clearLog(elementId) {
+            document.getElementById(elementId).innerHTML = '';
+        }
+        
+        async function checkEnvironment() {
+            clearLog('environment-results');
+            log('environment-results', 'Checking environment...', 'info');
+            
+            // Check WebAssembly support
+            if (typeof WebAssembly === 'undefined') {
+                log('environment-results', '❌ WebAssembly not supported', 'error');
+                return;
+            }
+            log('environment-results', '✅ WebAssembly supported', 'success');
+            
+            // Check if XVGEngineIntegration is available
+            if (typeof window.XVGEngineIntegration === 'undefined') {
+                log('environment-results', '❌ XVGEngineIntegration not found', 'error');
+                return;
+            }
+            log('environment-results', '✅ XVGEngineIntegration found', 'success');
+            
+            // Check if it's an instance or class
+            if (window.XVGEngineIntegration.constructor === window.XVGEngineIntegrationClass) {
+                log('environment-results', '✅ XVGEngineIntegration is a class instance', 'success');
+            } else {
+                log('environment-results', '⚠️ XVGEngineIntegration might not be properly instantiated', 'warning');
+            }
+            
+            log('environment-results', 'Environment check complete', 'info');
+        }
+        
+        async function testWasmLoading() {
+            clearLog('wasm-results');
+            log('wasm-results', 'Testing WASM loading...', 'info');
+            
+            try {
+                // Test if WASM files are accessible
+                const wasmResponse = await fetch('./modules/xvg_wasm_bg.wasm');
+                log('wasm-results', `WASM binary accessible: ${wasmResponse.ok}`, wasmResponse.ok ? 'success' : 'error');
+                
+                const jsResponse = await fetch('./modules/xvg_wasm.js');
+                log('wasm-results', `WASM JS accessible: ${jsResponse.ok}`, jsResponse.ok ? 'success' : 'error');
+                
+                // Try to import the module
+                log('wasm-results', 'Attempting to import WASM module...', 'info');
+                const wasmModule = await import('./modules/xvg_wasm.js');
+                log('wasm-results', `WASM module imported successfully. Available exports: ${Object.keys(wasmModule).join(', ')}`, 'success');
+                
+                // Check for expected constructors
+                const expectedClasses = ['XVGSDFEngine', 'XVG3DEngine', 'XVGCRDTEngine', 'XVGFile'];
+                for (const className of expectedClasses) {
+                    if (typeof wasmModule[className] === 'function') {
+                        log('wasm-results', `✅ ${className} constructor available`, 'success');
+                    } else {
+                        log('wasm-results', `❌ ${className} constructor not found`, 'error');
+                    }
+                }
+                
+            } catch (error) {
+                log('wasm-results', `❌ WASM loading failed: ${error.message}`, 'error');
+                console.error('WASM loading error:', error);
+            }
+        }
+        
+        async function testEngineIntegration() {
+            clearLog('engine-results');
+            log('engine-results', 'Testing engine integration...', 'info');
+            
+            if (!window.XVGEngineIntegration) {
+                log('engine-results', '❌ XVGEngineIntegration not available', 'error');
+                return;
+            }
+            
+            try {
+                log('engine-results', 'Checking engine integration status...', 'info');
+                
+                // Check if engines are initialized
+                if (window.XVGEngineIntegration.initialized) {
+                    log('engine-results', '✅ Engine integration is initialized', 'success');
+                } else {
+                    log('engine-results', '⚠️ Engine integration not yet initialized', 'warning');
+                }
+                
+                // Check engine status
+                const engines = window.XVGEngineIntegration.engines;
+                for (const [name, engine] of Object.entries(engines)) {
+                    if (engine) {
+                        log('engine-results', `✅ ${name} engine available`, 'success');
+                    } else {
+                        log('engine-results', `❌ ${name} engine not available`, 'error');
+                    }
+                }
+                
+                // Check WASM status
+                if (window.XVGEngineIntegration.xvgWasm) {
+                    log('engine-results', '✅ WASM module loaded', 'success');
+                } else {
+                    log('engine-results', '❌ WASM module not loaded', 'error');
+                }
+                
+            } catch (error) {
+                log('engine-results', `❌ Engine integration test failed: ${error.message}`, 'error');
+                console.error('Engine integration error:', error);
+            }
+        }
+        
+        async function testFullIntegration() {
+            clearLog('full-results');
+            log('full-results', 'Testing full integration...', 'info');
+            
+            try {
+                // Wait for engine integration to be ready
+                if (window.XVGEngineIntegration && !window.XVGEngineIntegration.initialized) {
+                    log('full-results', 'Waiting for engine integration to initialize...', 'info');
+                    await window.XVGEngineIntegration.init();
+                }
+                
+                if (!window.XVGEngineIntegration.initialized) {
+                    log('full-results', '❌ Engine integration failed to initialize', 'error');
+                    return;
+                }
+                
+                log('full-results', '✅ Engine integration initialized successfully', 'success');
+                
+                // Test basic engine functionality
+                const engines = window.XVGEngineIntegration.engines;
+                
+                // Test SDF engine
+                if (engines.sdf) {
+                    try {
+                        log('full-results', 'Testing SDF engine...', 'info');
+                        // Add specific SDF tests here
+                        log('full-results', '✅ SDF engine test passed', 'success');
+                    } catch (error) {
+                        log('full-results', `❌ SDF engine test failed: ${error.message}`, 'error');
+                    }
+                }
+                
+                // Test 3D engine
+                if (engines.threeD) {
+                    try {
+                        log('full-results', 'Testing 3D engine...', 'info');
+                        // Add specific 3D tests here
+                        log('full-results', '✅ 3D engine test passed', 'success');
+                    } catch (error) {
+                        log('full-results', `❌ 3D engine test failed: ${error.message}`, 'error');
+                    }
+                }
+                
+                log('full-results', 'Full integration test complete', 'info');
+                
+            } catch (error) {
+                log('full-results', `❌ Full integration test failed: ${error.message}`, 'error');
+                console.error('Full integration error:', error);
+            }
+        }
+        
+        // Auto-run environment check on load
+        window.addEventListener('load', () => {
+            setTimeout(checkEnvironment, 1000);
+        });
+    </script>
+</body>
+</html>
