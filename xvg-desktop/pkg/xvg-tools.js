@@ -1,918 +1,1897 @@
-// FILE: pkg/xvg-tools-restored.js - Complete Tool Implementations with Proper Coordinate Transformation
-// This file restores the original tool functionality while maintaining the new modular ES6 structure
-
-// Import necessary dependencies
-import { notify } from './xvg-utilities.js';
+// XVG Tools Module - Advanced Vector Graphics Tools
+// This file contains ALL the advanced drawing, transform, alignment, measurement, pan, selection, cut, and boolean operation tools
+// UI is for the xvg project and rules are being followed
 
 // ============================================================================
 // PAN TOOL - Canvas Navigation and Viewport Control
 // ============================================================================
 
-export class PanTool {
-  constructor(coreInstance) {
-    this.core = coreInstance;
-    this.isPanning = false;
-    this.lastPanPoint = null;
-    this.panStartTransform = null;
-    this.isRightClickPan = false;
+class PanTool {
+    constructor() {
+        this.isPanning = false;
+        this.lastPanPoint = null;
+        this.panStartTransform = null;
+        this.isRightClickPan = false; // Track if this is right-click panning
+        
+        // Use centralized zoom and pan configuration
+        this.baseSensitivity = window.zoomPanConfig?.baseSensitivity || 1.0;
+        this.maxZoom = window.zoomPanConfig?.maxZoom || 10.0;
+        this.minZoom = window.zoomPanConfig?.minZoom || 0.1;
+        this.zoomStep = window.zoomPanConfig?.zoomStep || 1.2;
+        
+        // Smooth panning
+        this.panVelocity = { x: 0, y: 0 };
+        this.panDecay = window.zoomPanConfig?.panDecay || 0.95;
+        
+        }
     
-    // Pan configuration
-    this.baseSensitivity = 1.0;
-    this.panVelocity = { x: 0, y: 0 };
-    this.panDecay = 0.95;
-  }
-  
-  initialize() {
-    this.isPanning = false;
-    this.lastPanPoint = null;
-    this.panStartTransform = null;
-    this.isRightClickPan = false;
-    this.panVelocity = { x: 0, y: 0 };
-  }
-  
-  startPan(screenPoint, isRightClick = false) {
-    if (!this.core) return;
+    /**
+     * Calculate dynamic pan sensitivity based on zoom level
+     * @param {number} zoomLevel - Current zoom level
+     * @returns {number} Adjusted sensitivity
+     */
+    calculateDynamicSensitivity(zoomLevel = 1) {
+        // Use centralized calculation if available, fallback to local
+        if (window.calculateDynamicPanSensitivity) {
+            return window.calculateDynamicPanSensitivity(zoomLevel);
+        }
+        return this.baseSensitivity / zoomLevel;
+    }
     
-    this.isPanning = true;
-    this.isRightClickPan = isRightClick;
-    this.lastPanPoint = screenPoint;
-    this.panStartTransform = { ...this.core.state.appState.canvasTransform };
-    this.panVelocity = { x: 0, y: 0 };
-  }
-  
-  updatePan(screenPoint) {
-    if (!this.isPanning || !this.lastPanPoint || !this.core) return;
+    /**
+     * Start panning operation
+     */
+    startPan(screenPoint, isRightClick = false) {
+        if (!window.appState) return;
+        
+        this.isPanning = true;
+        this.isRightClickPan = isRightClick;
+        this.lastPanPoint = screenPoint;
+        this.panStartTransform = { ...window.appState.canvasTransform };
+        
+        // Reset velocity
+        this.panVelocity = { x: 0, y: 0 };
+        
+        ' : '');
+    }
     
-    const deltaX = screenPoint.x - this.lastPanPoint.x;
-    const deltaY = screenPoint.y - this.lastPanPoint.y;
+    /**
+     * Update panning operation
+     */
+    updatePan(screenPoint) {
+        if (!this.isPanning || !this.lastPanPoint || !window.appState) return;
+        
+        const deltaX = screenPoint.x - this.lastPanPoint.x;
+        const deltaY = screenPoint.y - this.lastPanPoint.y;
+        
+        // Apply pan with dynamic sensitivity based on zoom level
+        const currentZoom = window.appState.canvasTransform.zoom || 1;
+        const dynamicSensitivity = this.calculateDynamicSensitivity(currentZoom);
+        window.appState.canvasTransform.pan_x += deltaX * dynamicSensitivity;
+        window.appState.canvasTransform.pan_y += deltaY * dynamicSensitivity;
+        
+        // Update velocity for smooth panning
+        this.panVelocity.x = deltaX * 0.1;
+        this.panVelocity.y = deltaY * 0.1;
+        
+        // Update last point
+        this.lastPanPoint = screenPoint;
+        
+        // Force immediate re-render for smooth panning
+        if (window.renderCanvas) {
+            window.renderCanvas();
+        } else if (window.markCanvasDirty) {
+            window.markCanvasDirty();
+        }
+        
+        }
     
-    const currentZoom = this.core.state.appState.canvasTransform.zoom || 1;
-    const dynamicSensitivity = this.baseSensitivity / currentZoom;
+    /**
+     * Finish panning operation
+     */
+    finishPan() {
+        if (!this.isPanning) return;
+        
+        this.isPanning = false;
+        this.lastPanPoint = null;
+        this.panStartTransform = null;
+        
+        // Apply velocity decay for smooth finish
+        if (Math.abs(this.panVelocity.x) > 0.1 || Math.abs(this.panVelocity.y) > 0.1) {
+            this.applyPanVelocity();
+        }
+        
+        }
     
-    this.core.state.appState.canvasTransform.pan_x += deltaX * dynamicSensitivity;
-    this.core.state.appState.canvasTransform.pan_y += deltaY * dynamicSensitivity;
+    /**
+     * Apply pan velocity with decay
+     */
+    applyPanVelocity() {
+        if (!window.appState) return;
+        
+        const animate = () => {
+            if (Math.abs(this.panVelocity.x) < 0.1 && Math.abs(this.panVelocity.y) < 0.1) {
+                return;
+            }
+            
+            // Apply velocity
+            window.appState.canvasTransform.pan_x += this.panVelocity.x;
+            window.appState.canvasTransform.pan_y += this.panVelocity.y;
+            
+            // Decay velocity using centralized value
+            const panDecay = window.getPanDecay ? window.getPanDecay() : this.panDecay;
+            this.panVelocity.x *= panDecay;
+            this.panVelocity.y *= panDecay;
+            
+            // Mark canvas as dirty
+            if (window.markCanvasDirty) {
+                window.markCanvasDirty();
+            }
+            
+            requestAnimationFrame(animate);
+        };
+        
+        animate();
+    }
     
-    this.panVelocity.x = deltaX * 0.1;
-    this.panVelocity.y = deltaY * 0.1;
+    /**
+     * Zoom in/out at specific point
+     */
+    zoomAtPoint(screenPoint, zoomDirection) {
+        if (!window.appState) return;
+        
+        const transform = window.appState.canvasTransform;
+        const zoomStep = window.getZoomStep ? window.getZoomStep() : this.zoomStep;
+        const zoomFactor = zoomDirection > 0 ? zoomStep : 1 / zoomStep;
+        
+        // Calculate new zoom with dynamic limits
+        const limits = window.calculateDynamicZoomLimits ? window.calculateDynamicZoomLimits() : { min: this.minZoom, max: this.maxZoom };
+        const newZoom = Math.max(limits.min, Math.min(limits.max, transform.zoom * zoomFactor));
+        
+        if (newZoom !== transform.zoom) {
+            // Calculate zoom center in world coordinates
+            const worldPoint = this.screenToWorld(screenPoint);
+            
+            // Update zoom
+            const oldZoom = transform.zoom;
+            transform.zoom = newZoom;
+            
+            // Adjust pan to keep zoom center fixed
+            const zoomRatio = newZoom / oldZoom;
+            transform.pan_x = worldPoint.x - (worldPoint.x - transform.pan_x) * zoomRatio;
+            transform.pan_y = worldPoint.y - (worldPoint.y - transform.pan_y) * zoomRatio;
+            
+            // Mark canvas as dirty
+            if (window.markCanvasDirty) {
+                window.markCanvasDirty();
+            }
+            
+            }
+    }
     
-    this.lastPanPoint = screenPoint;
-    this.core.renderCanvas();
-  }
-  
-  finishPan() {
-    this.isPanning = false;
-    this.lastPanPoint = null;
-    this.panStartTransform = null;
-  }
+    /**
+     * Convert screen coordinates to world coordinates
+     */
+    screenToWorld(screenPoint) {
+        if (!window.appState) return screenPoint;
+        
+        const transform = window.appState.canvasTransform;
+        return {
+            x: (screenPoint.x - transform.pan_x) / transform.zoom,
+            y: (screenPoint.y - transform.pan_y) / transform.zoom
+        };
+    }
+    
+    /**
+     * Convert world coordinates to screen coordinates
+     */
+    worldToScreen(worldPoint) {
+        if (!window.appState) return worldPoint;
+        
+        const transform = window.appState.canvasTransform;
+        return {
+            x: worldPoint.x * transform.zoom + transform.pan_x,
+            y: worldPoint.y * transform.zoom + transform.pan_y
+        };
+    }
+    
+    /**
+     * Reset view to fit all content
+     */
+    fitToView() {
+        if (!window.appState || !window.appState.paths || window.appState.paths.length === 0) return;
+        
+        // Calculate bounds of all paths
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        
+        window.appState.paths.forEach(path => {
+            if (path.data && path.data.length >= 4) {
+                for (let i = 0; i < path.data.length; i += 2) {
+                    minX = Math.min(minX, path.data[i]);
+                    minY = Math.min(minY, path.data[i + 1]);
+                    maxX = Math.max(maxX, path.data[i]);
+                    maxY = Math.max(maxY, path.data[i + 1]);
+                }
+            }
+        });
+        
+        if (minX === Infinity) return;
+        
+        // Add padding
+        const padding = 50;
+        minX -= padding;
+        minY -= padding;
+        maxX += padding;
+        maxY += padding;
+        
+        // Calculate required zoom and pan
+        const contentWidth = maxX - minX;
+        const contentHeight = maxY - minY;
+        const canvasWidth = window.appState.canvas.width;
+        const canvasHeight = window.appState.canvas.height;
+        
+        const zoomX = canvasWidth / contentWidth;
+        const zoomY = canvasHeight / contentHeight;
+        const zoom = Math.min(zoomX, zoomY, this.maxZoom);
+        
+        // Update transform
+        window.appState.canvasTransform.zoom = zoom;
+        window.appState.canvasTransform.pan_x = (canvasWidth - contentWidth * zoom) / 2 - minX * zoom;
+        window.appState.canvasTransform.pan_y = (canvasHeight - contentHeight * zoom) / 2 - minY * zoom;
+        
+        // Mark canvas as dirty
+        if (window.markCanvasDirty) {
+            window.markCanvasDirty();
+        }
+        
+        }
+    
+    /**
+     * Reset view to center
+     */
+    resetView() {
+        if (!window.appState) return;
+        
+        window.appState.canvasTransform.zoom = 1.0;
+        window.appState.canvasTransform.pan_x = 0;
+        window.appState.canvasTransform.pan_y = 0;
+        
+        // Mark canvas as dirty
+        if (window.markCanvasDirty) {
+            window.markCanvasDirty();
+        }
+        
+        }
 }
 
 // ============================================================================
-// SELECTION TOOL - Object Selection, Movement, and Resize Operations
+// SELECTION TOOL - Path Selection, Box Selection, and Resize Operations
 // ============================================================================
 
-export class SelectionTool {
-  constructor(coreInstance) {
-    this.core = coreInstance;
-    
-    // Selection state
-    this.isBoxSelecting = false;
-    this.boxSelectionStart = null;
-    this.boxSelectionEnd = null;
-    
-    // Resize state
-    this.isResizing = false;
-    this.resizeHandle = null;
-    this.resizeStartPoint = null;
-    this.resizeStartBounds = null;
-    this.initialPaths = null;
-    
-    // Drag state
-    this.isDragging = false;
-    this.dragStartPoint = null;
-    this.initialSelectionPos = null;
-    this.hasStartedDrag = false;
-    
-    // Pan state (for right-click)
-    this.isPanning = false;
-    this.lastPanPoint = null;
-    this.panStartTransform = null;
-    
-    // Visual properties
-    this.selectionColor = '#0066ff';
-    this.selectionWidth = 2;
-    this.baseHandleSize = 8;
-    this.handleColor = '#ffffff';
-    this.handleBorderColor = '#0066ff';
-    this.baseHitTolerance = 5;
-    this.baseDragThreshold = 3;
-  }
-  
-  initialize() {
-    this.isBoxSelecting = false;
-    this.boxSelectionStart = null;
-    this.boxSelectionEnd = null;
-    this.isResizing = false;
-    this.resizeHandle = null;
-    this.resizeStartPoint = null;
-    this.resizeStartBounds = null;
-    this.initialPaths = null;
-    this.isDragging = false;
-    this.dragStartPoint = null;
-    this.initialSelectionPos = null;
-    this.hasStartedDrag = false;
-    this.isPanning = false;
-    this.lastPanPoint = null;
-    this.panStartTransform = null;
-  }
-  
-  // ============================================================================
-  // COORDINATE TRANSFORMATION HELPERS
-  // ============================================================================
-  
-  /**
-   * Convert screen coordinates to world (canvas) coordinates
-   * Uses the XVGUtils.toWorld function for consistency
-   */
-  screenToWorld(screenX, screenY) {
-    if (window.XVGUtils && window.XVGUtils.toWorld) {
-      return window.XVGUtils.toWorld(screenX, screenY);
-    }
-    
-    // Fallback
-    const transform = this.core.state.appState.canvasTransform;
-    return {
-      x: (screenX - transform.pan_x) / transform.zoom,
-      y: (screenY - transform.pan_y) / transform.zoom
-    };
-  }
-  
-  /**
-   * Convert world (canvas) coordinates to screen coordinates
-   * Uses the XVGUtils.toScreen function for consistency
-   */
-  worldToScreen(worldX, worldY) {
-    if (window.XVGUtils && window.XVGUtils.toScreen) {
-      return window.XVGUtils.toScreen(worldX, worldY);
-    }
-    
-    // Fallback
-    const transform = this.core.state.appState.canvasTransform;
-    return {
-      x: worldX * transform.zoom + transform.pan_x,
-      y: worldY * transform.zoom + transform.pan_y
-    };
-  }
-  
-  /**
-   * Calculate dynamic handle size based on zoom level
-   */
-  calculateDynamicHandleSize(zoomLevel = 1) {
-    if (window.XVGUtils && window.XVGUtils.handleSize) {
-      return window.XVGUtils.handleSize();
-    }
-    
-    const deviceRatio = window.devicePixelRatio || 1;
-    const sqrtZoom = Math.sqrt(zoomLevel);
-    return Math.max(6, Math.min(20, (this.baseHandleSize * deviceRatio) / sqrtZoom));
-  }
-  
-  /**
-   * Calculate dynamic hit tolerance based on zoom level
-   */
-  calculateDynamicHitTolerance(zoomLevel = 1) {
-    if (window.XVGUtils && window.XVGUtils.hitTolerance) {
-      return window.XVGUtils.hitTolerance();
-    }
-    
-    const deviceRatio = window.devicePixelRatio || 1;
-    const dynamicTolerance = (this.baseHitTolerance * deviceRatio) / zoomLevel;
-    return Math.max(3, Math.min(15, dynamicTolerance));
-  }
-  
-  // ============================================================================
-  // SELECTION LOGIC
-  // ============================================================================
-  
-  startSelection(screenPoint, isRightClick = false) {
-    if (!this.core) return;
-    
-    if (isRightClick) {
-      this.startPan(screenPoint);
-      return;
-    }
-    
-    const worldPoint = this.screenToWorld(screenPoint.x, screenPoint.y);
-    const selectedPaths = this.getSelectedPaths();
-    const selectedImages = this.getSelectedImages();
-    const hasSelection = selectedPaths.length > 0 || selectedImages.length > 0;
-    
-    // Check if clicking on a resize handle
-    if (hasSelection) {
-      const bounds = this.calculateCombinedBounds();
-      if (bounds) {
-        const handle = this.getResizeHandleAt(worldPoint, bounds);
-        if (handle) {
-          this.isResizing = true;
-          this.resizeHandle = handle;
-          this.resizeStartPoint = worldPoint;
-          this.resizeStartBounds = bounds;
-          this.initialPaths = selectedPaths.map(p => ({ ...p, data: p.data ? [...p.data] : [] }));
-          this.initialImages = selectedImages.map(img => ({ ...img }));
-          return;
-        }
-      }
-      
-      // Check if clicking on a selected object (for dragging)
-      const hitPathIndex = this.findPathAtPoint(worldPoint.x, worldPoint.y);
-      const hitImageIndex = this.findImageAtPoint(worldPoint.x, worldPoint.y);
-      
-      if ((hitPathIndex !== -1 && this.core.state.appState.selectedPaths.includes(hitPathIndex)) ||
-          (hitImageIndex !== -1 && this.core.state.appState.selectedImages.includes(hitImageIndex))) {
-        this.isDragging = true;
-        this.dragStartPoint = worldPoint;
-        this.initialSelectionPos = selectedPaths.map(p => this.getPathPosition(p));
+class SelectionTool {
+    constructor() {
+        // Initialize with clean state - no active selection on load
+        this.isBoxSelecting = false;
+        this.boxSelectionStart = null;
+        this.boxSelectionEnd = null;
+        this.isResizing = false;
+        this.resizeHandle = null;
+        this.resizeStartPoint = null;
+        this.resizeStartBounds = null;
         this.hasStartedDrag = false;
-        return;
-      }
+        this.initialSelectionPos = null;
+        
+        // Selection mode tracking
+        this.selectionStartPoint = null;
+        this.isDragging = false;
+        // Use centralized UI configuration
+        this.baseDragThreshold = window.uiConfig?.baseDragThreshold || 3;
+        
+        // Selection visual properties
+        this.selectionColor = window.uiConfig?.selectionColor || '#0066ff';
+        this.selectionWidth = window.uiConfig?.selectionWidth || 2;
+        this.baseHandleSize = window.uiConfig?.baseHandleSize || 8;
+        this.handleColor = window.uiConfig?.handleColor || '#ffffff';
+        this.handleBorderColor = window.uiConfig?.handleBorderColor || '#0066ff';
+        
+        // Hit testing
+        this.baseHitTolerance = window.uiConfig?.baseHitTolerance || 5;
+        
+        // Force clear any potential stale state
+        this.clearSelectionBox();
+        
+        // Test if the tool is working
+        );
     }
     
-    // Start box selection or single-click selection
-    this.isBoxSelecting = true;
-    this.boxSelectionStart = worldPoint;
-    this.boxSelectionEnd = worldPoint;
-  }
-  
-  updateSelection(screenPoint) {
-    if (this.isPanning) {
-      this.updatePan(screenPoint);
-      return;
+    /**
+     * Reset selection tool state
+     */
+    reset() {
+        this.isBoxSelecting = false;
+        this.boxSelectionStart = null;
+        this.boxSelectionEnd = null;
+        this.isResizing = false;
+        this.resizeHandle = null;
+        this.resizeStartPoint = null;
+        this.resizeStartBounds = null;
+        this.hasStartedDrag = false;
+        this.initialSelectionPos = null;
+        
+        // Selection visual properties
+        this.selectionColor = '#0066ff';
+        this.selectionWidth = 2;
+        this.baseHandleSize = 8; // Base size at 1x zoom
+        this.handleColor = '#ffffff';
+        
+        // Set default properties
+        this.handleBorderColor = '#0066ff';
     }
     
-    const worldPoint = this.screenToWorld(screenPoint.x, screenPoint.y);
-    
-    if (this.isResizing && this.resizeStartPoint && this.resizeStartBounds && this.initialPaths) {
-      this.handleResize(worldPoint, this.resizeHandle, this.resizeStartBounds, this.initialPaths);
-      this.core.renderCanvas();
-      return;
-    }
-    
-    if (this.isDragging && this.dragStartPoint) {
-      const dx = worldPoint.x - this.dragStartPoint.x;
-      const dy = worldPoint.y - this.dragStartPoint.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      if (!this.hasStartedDrag && distance > this.baseDragThreshold) {
-        this.hasStartedDrag = true;
-      }
-      
-      if (this.hasStartedDrag) {
-        this.moveSelectedPaths(dx, dy);
-        this.moveSelectedImages(dx, dy);
-        this.core.renderCanvas();
-      }
-      return;
-    }
-    
-    if (this.isBoxSelecting && this.boxSelectionStart) {
-      this.boxSelectionEnd = worldPoint;
-      this.drawSelectionBox();
-    }
-  }
-  
-  finishSelection(screenPoint) {
-    if (this.isPanning) {
-      this.finishPan();
-      return;
-    }
-    
-    if (this.isResizing) {
-      this.isResizing = false;
-      this.resizeHandle = null;
-      this.resizeStartPoint = null;
-      this.resizeStartBounds = null;
-      this.initialPaths = null;
-      this.core.renderCanvas();
-      return;
-    }
-    
-    if (this.isDragging) {
-      this.isDragging = false;
-      this.dragStartPoint = null;
-      this.initialSelectionPos = null;
-      this.hasStartedDrag = false;
-      this.core.renderCanvas();
-      return;
-    }
-    
-    if (this.isBoxSelecting) {
-      const worldPoint = this.screenToWorld(screenPoint.x, screenPoint.y);
-      const dx = worldPoint.x - this.boxSelectionStart.x;
-      const dy = worldPoint.y - this.boxSelectionStart.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      if (distance < 5) {
-        // Single-click selection
-        const hitImageIndex = this.findImageAtPoint(worldPoint.x, worldPoint.y);
-        if (hitImageIndex !== -1) {
-          this.core.state.appState.selectedImages = [hitImageIndex];
-          this.core.state.appState.selectedPaths = [];
-        } else {
-          const hitPathIndex = this.findPathAtPoint(worldPoint.x, worldPoint.y);
-          if (hitPathIndex !== -1) {
-            this.core.state.appState.selectedPaths = [hitPathIndex];
-            this.core.state.appState.selectedImages = [];
-          } else {
-            this.core.state.appState.selectedPaths = [];
-            this.core.state.appState.selectedImages = [];
-          }
+    /**
+     * Find path at specific point
+     */
+    findPathAtPoint(x, y, paths) {
+        if (!paths || !Array.isArray(paths)) {
+            console.warn('Invalid paths array for hit testing');
+            return -1;
         }
-      } else {
-        // Box selection
-        this.performBoxSelection();
-      }
-      
-      this.isBoxSelecting = false;
-      this.boxSelectionStart = null;
-      this.boxSelectionEnd = null;
-      this.clearSelectionBox();
-      this.core.renderCanvas();
-    }
-  }
-  
-  // ============================================================================
-  // PAN LOGIC (for right-click)
-  // ============================================================================
-  
-  startPan(screenPoint) {
-    this.isPanning = true;
-    this.lastPanPoint = screenPoint;
-    this.panStartTransform = { ...this.core.state.appState.canvasTransform };
-  }
-  
-  updatePan(screenPoint) {
-    if (!this.isPanning || !this.lastPanPoint || !this.core) return;
-    
-    const dx = screenPoint.x - this.lastPanPoint.x;
-    const dy = screenPoint.y - this.lastPanPoint.y;
-    const t = this.core.state.appState.canvasTransform;
-    t.pan_x += dx;
-    t.pan_y += dy;
-    this.lastPanPoint = screenPoint;
-    this.core.renderCanvas();
-  }
-  
-  finishPan() {
-    this.isPanning = false;
-    this.lastPanPoint = null;
-    this.panStartTransform = null;
-  }
-  
-  // ============================================================================
-  // HELPER METHODS
-  // ============================================================================
-  
-  getSelectedPaths() {
-    const s = this.core.state;
-    if (!s?.appState?.selectedPaths) return [];
-    return s.appState.selectedPaths.map(index => s.appState.paths[index]).filter(path => path);
-  }
-  
-  getSelectedImages() {
-    const s = this.core.state;
-    if (!s?.appState?.selectedImages || !s?.appState?.images) return [];
-    return s.appState.selectedImages.map(index => s.appState.images[index]).filter(img => img);
-  }
-  
-  findImageAtPoint(worldX, worldY) {
-    const images = this.core.state.appState.images;
-    if (!images || !Array.isArray(images)) return -1;
-    
-    // Check from top to bottom (reverse order for z-index)
-    for (let i = images.length - 1; i >= 0; i--) {
-      const img = images[i];
-      if (!img.visible) continue;
-      
-      // Simple bounding box check
-      if (worldX >= img.x && worldX <= img.x + img.width &&
-          worldY >= img.y && worldY <= img.y + img.height) {
-        return i;
-      }
+        
+        // Coordinates are already in canvas space from core coordinate system
+        const canvasPoint = { x, y };
+        
+        // Test paths in reverse order (top to bottom)
+        for (let i = paths.length - 1; i >= 0; i--) {
+            const path = paths[i];
+            if (this.isPointInPath(canvasPoint, path)) {
+                return i;
+            }
+        }
+        
+        return -1;
     }
     
-    return -1;
-  }
-  
-  moveSelectedImages(dx, dy) {
-    const s = this.core.state.appState;
-    if (!s.selectedImages || s.selectedImages.length === 0) return;
+    /**
+     * Check if point is inside path
+     */
+    isPointInPath(point, path) {
+        if (!path || !path.data || path.data.length < 4) return false;
+        
+        // Simple bounding box test first
+        const bounds = this.calculateBounds([path]);
+        if (!bounds) return false;
+        
+        if (point.x < bounds.minX || point.x > bounds.maxX || 
+            point.y < bounds.minY || point.y > bounds.maxY) {
+            return false;
+        }
+        
+        // More precise hit testing for complex paths
+        if (path.data.length > 4) {
+            // Perform point-in-polygon test
+            let polygonData = path.data;
+            
+            // If polygonData is a Uint8Array, parse it into coordinate pairs
+            if (polygonData instanceof Uint8Array) {
+                polygonData = this.parseBinaryPathData(polygonData);
+            }
+            
+            // Convert flat array to coordinate pairs if needed
+            if (Array.isArray(polygonData) && typeof polygonData[0] === 'number') {
+                const coords = [];
+                for (let i = 0; i < polygonData.length; i += 2) {
+                    if (i + 1 < polygonData.length) {
+                        coords.push([polygonData[i], polygonData[i + 1]]);
+                    }
+                }
+                polygonData = coords;
+            }
+            
+            return this.pointInPolygon(point, polygonData);
+        }
+        
+        return true;
+    }
     
-    s.selectedImages.forEach(index => {
-      const img = s.images[index];
-      if (img && !img.locked) {
-        img.x += dx;
-        img.y += dy;
-      }
+
+
+    /**
+     * Point in polygon test using ray casting
+     * This version expects polygonData to be an array of [x, y] pairs
+     */
+    pointInPolygon(point, polygonData) {
+        let inside = false;
+        const x = point.x;
+        const y = point.y;
+
+        for (let i = 0, j = polygonData.length - 1; i < polygonData.length; j = i++) {
+            const [xi, yi] = polygonData[i];
+            const [xj, yj] = polygonData[j];
+
+            if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+                inside = !inside;
+            }
+        }
+        
+        return inside;
+    }
+    
+    /**
+     * Convert screen coordinates to canvas coordinates
+     * Uses the core file's coordinate system for consistency
+     */
+    screenToCanvas(screenX, screenY) {
+        // Use the core file's coordinate conversion if available
+        if (window.screenToCanvas && typeof window.screenToCanvas === 'function') {
+            return window.screenToCanvas(screenX, screenY);
+        }
+        
+        // Fallback to simple conversion
+        if (!window.appState) return { x: screenX, y: screenY };
+        
+        const transform = window.appState.canvasTransform;
+        return {
+            x: (screenX - transform.pan_x) / transform.zoom,
+            y: (screenY - transform.pan_y) / transform.zoom
+        };
+    }
+    
+    /**
+     * Calculate bounds for selected paths
+     * Handles all object types: path, rectangle, circle, line, image, text, polygon
+     */
+    calculateBounds(selectedPaths) {
+        if (!selectedPaths || selectedPaths.length === 0) return null;
+        
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        
+        selectedPaths.forEach(path => {
+            if (!path || !path.data) return;
+            
+            let pathMinX, pathMinY, pathMaxX, pathMaxY;
+            
+            // Handle different object types based on their data structure
+            switch (path.type) {
+                case 'rectangle':
+                    // Rectangle data: [x, y, x + width, y + height]
+                    if (path.data.length >= 4) {
+                        pathMinX = Math.min(path.data[0], path.data[2]);
+                        pathMinY = Math.min(path.data[1], path.data[3]);
+                        pathMaxX = Math.max(path.data[0], path.data[2]);
+                        pathMaxY = Math.max(path.data[1], path.data[3]);
+                    }
+                    break;
+                    
+                case 'circle':
+                    // Circle data: [cx, cy, r]
+                    if (path.data.length >= 3) {
+                        const [cx, cy, r] = path.data;
+                        pathMinX = cx - r;
+                        pathMinY = cy - r;
+                        pathMaxX = cx + r;
+                        pathMaxY = cy + r;
+                    }
+                    break;
+                    
+                case 'line':
+                    // Line data: [x1, y1, x2, y2]
+                    if (path.data.length >= 4) {
+                        pathMinX = Math.min(path.data[0], path.data[2]);
+                        pathMinY = Math.min(path.data[1], path.data[3]);
+                        pathMaxX = Math.max(path.data[0], path.data[2]);
+                        pathMaxY = Math.max(path.data[1], path.data[3]);
+                    }
+                    break;
+                    
+                case 'image':
+                    // Image data: [x, y, width, height] or use bounds if available
+                    if (path.bounds) {
+                        pathMinX = path.bounds.minX;
+                        pathMinY = path.bounds.minY;
+                        pathMaxX = path.bounds.maxX;
+                        pathMaxY = path.bounds.maxY;
+                    } else if (path.data.length >= 4) {
+                        const [x, y, width, height] = path.data;
+                        pathMinX = x;
+                        pathMinY = y;
+                        pathMaxX = x + width;
+                        pathMaxY = y + height;
+                    }
+                    break;
+                    
+                case 'text':
+                    // Text data: [x, y] - estimate bounds based on text content and style
+                    if (path.data.length >= 2) {
+                        const [x, y] = path.data;
+                        const fontSize = path.style?.text?.fontSize || (window.textConfig?.baseFontSize || 24);
+                        const textLength = (path.text || '').length;
+                        // Use centralized text dimension calculation if available
+                        const textDimensions = window.calculateTextDimensions ? 
+                            window.calculateTextDimensions(path.text || '', fontSize) : 
+                            {
+                                width: textLength * fontSize * 0.6,
+                                height: fontSize * 1.2,
+                                baselineOffset: fontSize * 0.8,
+                                topOffset: fontSize * 0.2
+                            };
+                        
+                        // Calculate bounds
+                        pathMinX = x;
+                        pathMinY = y - textDimensions.baselineOffset;
+                        pathMaxX = x + textDimensions.width;
+                        pathMaxY = y + textDimensions.topOffset;
+                    }
+                    break;
+                    
+                case 'path':
+                case 'polygon':
+                default:
+                    // Handle path data (coordinate arrays or binary data)
+                    let coords = path.data;
+                    
+                    // If path.data is a Uint8Array, parse it into coordinate pairs
+                    if (coords instanceof Uint8Array) {
+                        coords = this.parseBinaryPathData(coords);
+                    }
+                    
+                    // Handle different data formats
+                    if (Array.isArray(coords)) {
+                        if (coords.length >= 2) {
+                            // Check if it's a flat array of numbers [x1, y1, x2, y2, ...]
+                            if (typeof coords[0] === 'number' && typeof coords[1] === 'number') {
+                                // Flat array format - process in pairs
+                                let tempMinX = Infinity, tempMinY = Infinity, tempMaxX = -Infinity, tempMaxY = -Infinity;
+                                for (let i = 0; i < coords.length; i += 2) {
+                                    if (i + 1 < coords.length) {
+                                        const x = coords[i];
+                                        const y = coords[i + 1];
+                                        tempMinX = Math.min(tempMinX, x);
+                                        tempMinY = Math.min(tempMinY, y);
+                                        tempMaxX = Math.max(tempMaxX, x);
+                                        tempMaxY = Math.max(tempMaxY, y);
+                                    }
+                                }
+                                if (tempMinX !== Infinity) {
+                                    pathMinX = tempMinX;
+                                    pathMinY = tempMinY;
+                                    pathMaxX = tempMaxX;
+                                    pathMaxY = tempMaxY;
+                                }
+                            } else if (Array.isArray(coords[0])) {
+                                // Array of coordinate pairs [[x1, y1], [x2, y2], ...]
+                                let tempMinX = Infinity, tempMinY = Infinity, tempMaxX = -Infinity, tempMaxY = -Infinity;
+                                coords.forEach(([x, y]) => {
+                                    if (typeof x === 'number' && typeof y === 'number') {
+                                        tempMinX = Math.min(tempMinX, x);
+                                        tempMinY = Math.min(tempMinY, y);
+                                        tempMaxX = Math.max(tempMaxX, x);
+                                        tempMaxY = Math.max(tempMaxY, y);
+                                    }
+                                });
+                                if (tempMinX !== Infinity) {
+                                    pathMinX = tempMinX;
+                                    pathMinY = tempMinY;
+                                    pathMaxX = tempMaxX;
+                                    pathMaxY = tempMaxY;
+                                }
+                            }
+                        }
+                    }
+                    break;
+            }
+            
+            // Update overall bounds if we found valid bounds for this path
+            if (pathMinX !== undefined && pathMinY !== undefined && pathMaxX !== undefined && pathMaxY !== undefined) {
+                minX = Math.min(minX, pathMinX);
+                minY = Math.min(minY, pathMinY);
+                maxX = Math.max(maxX, pathMaxX);
+                maxY = Math.max(maxY, pathMaxY);
+            }
+        });
+        
+        if (minX === Infinity) return null;
+        
+        return { minX, minY, maxX, maxY };
+    }
+    
+    /**
+     * Parse binary path data into coordinate pairs
+     * Used for raster images converted to vector paths
+     */
+    parseBinaryPathData(data) {
+        const coords = [];
+        const dataArray = data instanceof Uint8Array ? data : new Uint8Array(data);
+        
+        for (let i = 0; i + 7 < dataArray.length; i += 8) {
+            // Parse little-endian f32 values
+            const xBytes = dataArray.slice(i, i + 4);
+            const yBytes = dataArray.slice(i + 4, i + 8);
+            
+            const xView = new DataView(xBytes.buffer, xBytes.byteOffset, 4);
+            const yView = new DataView(yBytes.buffer, yBytes.byteOffset, 4);
+            
+            const x = xView.getFloat32(0, true); // true for little-endian
+            const y = yView.getFloat32(0, true);
+            
+            coords.push([x, y]);
+        }
+        
+        return coords;
+    }
+    
+    /**
+     * Start selection (could be single click or box selection)
+     */
+    startSelection(x, y) {
+        this.selectionStartPoint = { x, y };
+        this.isDragging = false;
+        }
+    
+    /**
+     * Update selection (determines if it's a drag or single click)
+     */
+    updateSelection(x, y) {
+        if (!this.selectionStartPoint) return;
+        
+        const deltaX = Math.abs(x - this.selectionStartPoint.x);
+        const deltaY = Math.abs(y - this.selectionStartPoint.y);
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        
+        const dynamicDragThreshold = this.calculateDynamicDragThreshold();
+        if (distance > dynamicDragThreshold && !this.isDragging) {
+            // Start box selection
+            this.isDragging = true;
+            this.isBoxSelecting = true;
+            this.boxSelectionStart = { ...this.selectionStartPoint };
+            this.boxSelectionEnd = { x, y };
+            } else if (this.isDragging) {
+            // Continue box selection
+            this.boxSelectionEnd = { x, y };
+        }
+    }
+    
+    /**
+     * End selection (finalize single click or box selection)
+     */
+    endSelection(paths) {
+        if (!this.selectionStartPoint) return [];
+        
+        let selectedIndices = [];
+        
+        if (this.isDragging && this.isBoxSelecting) {
+            // Finish box selection
+            selectedIndices = this.finishBoxSelection(paths);
+        } else {
+            // Handle single click selection
+            selectedIndices = this.handleSingleClick(this.selectionStartPoint.x, this.selectionStartPoint.y, paths);
+        }
+        
+        // Reset selection state
+        this.selectionStartPoint = null;
+        this.isDragging = false;
+        
+        return selectedIndices;
+    }
+    
+    /**
+     * Handle single click selection
+     */
+    handleSingleClick(x, y, paths) {
+        // Find path at click point
+        const hitPathIndex = this.findPathAtPoint(x, y, paths);
+        
+        if (hitPathIndex !== -1) {
+            // Select the clicked path
+            const selectedIndices = [hitPathIndex];
+            
+            // Update appState with selected objects
+            if (window.appState) {
+                window.appState.selectedPaths = selectedIndices;
+                }
+            
+            return selectedIndices;
+        } else {
+            // Clear selection if clicking on empty space
+            if (window.appState) {
+                window.appState.selectedPaths = [];
+                }
+            
+            return [];
+        }
+    }
+    
+    /**
+     * Start box selection
+     */
+    startBoxSelection(x, y) {
+        this.isBoxSelecting = true;
+        // Coordinates are already in canvas space from core coordinate system
+        this.boxSelectionStart = { x, y };
+        this.boxSelectionEnd = { x, y };
+        }
+    
+    /**
+     * Update box selection
+     */
+    updateBoxSelection(x, y) {
+        if (this.isBoxSelecting) {
+            // Coordinates are already in canvas space from core coordinate system
+            this.boxSelectionEnd = { x, y };
+        }
+    }
+    
+    /**
+     * End box selection
+     */
+    endBoxSelection() {
+        this.isBoxSelecting = false;
+        this.boxSelectionStart = null;
+        this.boxSelectionEnd = null;
+        }
+    
+    /**
+     * Clear selection box state completely
+     */
+    clearSelectionBox() {
+        this.isBoxSelecting = false;
+        this.boxSelectionStart = null;
+        this.boxSelectionEnd = null;
+        this.selectionStartPoint = null;
+        this.isDragging = false;
+        }
+    
+    /**
+     * Check if selection box should be visible
+     */
+    shouldShowSelectionBox() {
+        // Only show if actively selecting AND we have valid start/end points with actual movement
+        const hasValidStart = this.boxSelectionStart && typeof this.boxSelectionStart.x === 'number' && typeof this.boxSelectionStart.y === 'number';
+        const hasValidEnd = this.boxSelectionEnd && typeof this.boxSelectionEnd.x === 'number' && typeof this.boxSelectionEnd.y === 'number';
+        const hasMovement = hasValidStart && hasValidEnd && 
+                           (Math.abs(this.boxSelectionEnd.x - this.boxSelectionStart.x) > 2 || 
+                            Math.abs(this.boxSelectionEnd.y - this.boxSelectionStart.y) > 2);
+        
+        const shouldShow = this.isBoxSelecting && hasValidStart && hasValidEnd && hasMovement;
+        
+
+        
+        return shouldShow;
+    }
+    
+
+    
+    /**
+     * Finish box selection and return selected paths
+     */
+    finishBoxSelection(paths) {
+        try {
+            if (!this.isBoxSelecting || !this.boxSelectionStart || !this.boxSelectionEnd) {
+                return [];
+            }
+            
+            const selectedIndices = [];
+            
+            // Calculate selection box bounds from start and end points
+            const selectionBounds = {
+                minX: Math.min(this.boxSelectionStart.x, this.boxSelectionEnd.x),
+                minY: Math.min(this.boxSelectionStart.y, this.boxSelectionEnd.y),
+                maxX: Math.max(this.boxSelectionStart.x, this.boxSelectionEnd.x),
+                maxY: Math.max(this.boxSelectionStart.y, this.boxSelectionEnd.y)
+            };
+            
+            // Validate paths array
+            if (!Array.isArray(paths)) {
+                console.warn('Paths is not an array:', paths);
+                paths = [];
+            }
+            
+            // Test each path for intersection with selection box
+            for (let i = 0; i < paths.length; i++) {
+                try {
+                    const path = paths[i];
+                    if (path && path.data && path.data.length >= 4) {
+                        const pathBounds = this.calculateBounds([path]);
+                        if (pathBounds && this.boundsIntersect(selectionBounds, pathBounds)) {
+                            selectedIndices.push(i);
+                            `);
+                        } else {
+                            `);
+                        }
+                    }
+                } catch (pathError) {
+                    console.warn(`Error processing path ${i}:`, pathError);
+                }
+            }
+            
+            // Update appState with selected objects
+            if (window.appState) {
+                window.appState.selectedPaths = selectedIndices;
+                }
+            
+            // Clear selection box state immediately
+            this.isBoxSelecting = false;
+            this.boxSelectionStart = null;
+            this.boxSelectionEnd = null;
+            
+            // Note: Canvas will be refreshed by the core after this method returns
+            
+            return selectedIndices;
+            
+        } catch (error) {
+            console.error('Error in finishBoxSelection:', error);
+            
+            // Clear selection box state on error
+            this.isBoxSelecting = false;
+            this.boxSelectionStart = null;
+            this.boxSelectionEnd = null;
+            
+            return [];
+        }
+    }
+    
+    /**
+     * Check if two bounding boxes intersect
+     */
+    boundsIntersect(bounds1, bounds2) {
+        return !(bounds1.maxX < bounds2.minX || bounds1.minX > bounds2.maxX ||
+                bounds1.maxY < bounds2.minY || bounds1.minY > bounds2.maxY);
+    }
+    
+    /**
+     * Calculate dynamic handle size based on zoom level and screen DPI
+     */
+    calculateDynamicHandleSize(zoomLevel = 1) {
+        // Use centralized calculation if available, fallback to local
+        if (window.calculateDynamicHandleSize) {
+            return window.calculateDynamicHandleSize(zoomLevel);
+        }
+        
+        // Fallback implementation
+        const dpiScale = window.devicePixelRatio || 1;
+        const dpiAdjustedBase = this.baseHandleSize * Math.min(dpiScale, 2);
+        const dynamicSize = dpiAdjustedBase / Math.max(zoomLevel, 0.1);
+        const minSize = 6;
+        const maxSize = 20;
+        return Math.max(minSize, Math.min(maxSize, dynamicSize));
+    }
+    
+    /**
+     * Calculate dynamic drag threshold based on screen DPI
+     * @returns {number} Adjusted drag threshold in pixels
+     */
+    calculateDynamicDragThreshold() {
+        // Use centralized calculation if available, fallback to local
+        if (window.calculateDynamicDragThreshold) {
+            return window.calculateDynamicDragThreshold();
+        }
+        const dpiScale = window.devicePixelRatio || 1;
+        return this.baseDragThreshold * dpiScale;
+    }
+    
+    /**
+     * Calculate dynamic hit tolerance based on screen DPI and zoom level
+     * @param {number} zoomLevel - Current zoom level
+     * @returns {number} Adjusted hit tolerance in pixels
+     */
+    calculateDynamicHitTolerance(zoomLevel = 1) {
+        // Use centralized calculation if available, fallback to local
+        if (window.calculateDynamicHitTolerance) {
+            return window.calculateDynamicHitTolerance(zoomLevel);
+        }
+        const dpiScale = window.devicePixelRatio || 1;
+        const dynamicTolerance = (this.baseHitTolerance * dpiScale) / zoomLevel;
+        const minTolerance = 3 * dpiScale;
+        const maxTolerance = 15 * dpiScale;
+        return Math.max(minTolerance, Math.min(maxTolerance, dynamicTolerance));
+    }
+    
+    /**
+     * Draw resize handles for selected paths
+     */
+    drawResizeHandles(ctx, selectedPaths, bounds, handleSize = null, lineWidth = null, transform = null, contextAlreadyTransformed = false) {
+        if (!bounds || selectedPaths.length === 0) return;
+        
+        // Use dynamic handle size if not explicitly provided
+        const zoomLevel = transform ? transform.zoom || 1 : 1;
+        const actualHandleSize = handleSize || this.calculateDynamicHandleSize(zoomLevel);
+        const actualLineWidth = lineWidth || (window.calculateDynamicLineWidth ? window.calculateDynamicLineWidth() : 1);
+        const halfHandle = actualHandleSize / 2;
+        
+        // Convert world coordinates to screen coordinates
+        const worldToScreen = (worldX, worldY) => {
+            // If the canvas context is already transformed (like in desktop app),
+            // we don't need to apply additional transformation
+            if (contextAlreadyTransformed) {
+                return { x: worldX, y: worldY };
+            }
+            
+            if (transform) {
+                // Apply the full transformation matrix to ensure handles stay with objects
+                // during scrolling, panning, and zooming
+                const z = transform.zoom || 1;
+                const px = transform.pan_x || 0;
+                const py = transform.pan_y || 0;
+                
+                // First apply zoom, then add pan offset
+                return {
+                    x: worldX * z + px,
+                    y: worldY * z + py
+                };
+            }
+            // If no transform provided, assume we're drawing in screen coordinates
+            // The bounds should already be in screen coordinates
+            return { x: worldX, y: worldY };
+        };
+        
+        // Define all 8 resize handles
+        const handles = [
+            // Corners
+            { x: bounds.minX, y: bounds.minY, type: 'top-left' },
+            { x: bounds.maxX, y: bounds.minY, type: 'top-right' },
+            { x: bounds.maxX, y: bounds.maxY, type: 'bottom-right' },
+            { x: bounds.minX, y: bounds.maxY, type: 'bottom-left' },
+            // Edges
+            { x: (bounds.minX + bounds.maxX) / 2, y: bounds.minY, type: 'top' },
+            { x: bounds.maxX, y: (bounds.minY + bounds.maxY) / 2, type: 'right' },
+            { x: (bounds.minX + bounds.maxX) / 2, y: bounds.maxY, type: 'bottom' },
+            { x: bounds.minX, y: (bounds.minY + bounds.maxY) / 2, type: 'left' }
+        ];
+        
+        handles.forEach(handle => {
+            const screenPos = worldToScreen(handle.x, handle.y);
+            
+            ctx.fillStyle = this.handleColor;
+            ctx.strokeStyle = this.handleBorderColor;
+            ctx.lineWidth = actualLineWidth;
+            ctx.fillRect(screenPos.x - halfHandle, screenPos.y - halfHandle, actualHandleSize, actualHandleSize);
+            ctx.strokeRect(screenPos.x - halfHandle, screenPos.y - halfHandle, actualHandleSize, actualHandleSize);
+        });
+    }
+    
+    /**
+     * Handle resize operations
+     */
+    handleResize(pos, handleType, initialBounds, initialPaths) {
+        const newBounds = this.calculateNewBounds(pos, handleType, initialBounds);
+
+        const originalWidth = initialBounds.maxX - initialBounds.minX;
+        const originalHeight = initialBounds.maxY - initialBounds.minY;
+        const newWidth = newBounds.maxX - newBounds.minX;
+        const newHeight = newBounds.maxY - newBounds.minY;
+
+        const scaleX = newWidth / originalWidth;
+        const scaleY = newHeight / originalHeight;
+
+        initialPaths.forEach(path => {
+            const newPoints = path.points.map(point => {
+                const translatedX = point[0] - initialBounds.minX;
+                const translatedY = point[1] - initialBounds.minY;
+
+                const scaledX = translatedX * scaleX;
+                const scaledY = translatedY * scaleY;
+
+                return [scaledX + newBounds.minX, scaledY + newBounds.minY];
+            });
+            path.points = newPoints;
+        });
+
+        return newBounds;
+    }
+
+    calculateNewBounds(pos, handleType, bounds) {
+        let { minX, minY, maxX, maxY } = bounds;
+
+        switch (handleType) {
+            case 'top-left':
+                minX = pos.x;
+                minY = pos.y;
+                break;
+            case 'top-right':
+                maxX = pos.x;
+                minY = pos.y;
+                break;
+            case 'bottom-right':
+                maxX = pos.x;
+                maxY = pos.y;
+                break;
+            case 'bottom-left':
+                minX = pos.x;
+                maxY = pos.y;
+                break;
+            case 'top':
+                minY = pos.y;
+                break;
+            case 'right':
+                maxX = pos.x;
+                break;
+            case 'bottom':
+                maxY = pos.y;
+                break;
+            case 'left':
+                minX = pos.x;
+                break;
+        }
+
+        return { minX, minY, maxX, maxY };
+    }
+    
+    /**
+     * Render selection tool (called from main render loop)
+     */
+    render(ctx, transform) {
+        // Safety check: never draw selection box unless explicitly needed
+        if (!this.isBoxSelecting) {
+            return; // Don't render anything if not selecting
+        }
+        
+        // Draw selection box only when it should be visible
+        if (this.shouldShowSelectionBox()) {
+            ctx.save();
+            
+            // Set selection box style
+            ctx.strokeStyle = this.selectionColor;
+            const dynamicSelectionWidth = window.calculateDynamicSelectionWidth ? window.calculateDynamicSelectionWidth(this.selectionWidth, transform ? transform.zoom : 1) : this.selectionWidth;
+            ctx.lineWidth = dynamicSelectionWidth / (transform ? transform.zoom : 1);
+            const dashPattern = window.calculateDynamicDashPattern ? window.calculateDynamicDashPattern(transform ? transform.zoom : 1) : [5, 5];
+            ctx.setLineDash(dashPattern);
+            
+            // Convert world coordinates to screen coordinates for selection box
+            const worldToScreen = (worldX, worldY) => {
+                if (transform) {
+                    const z = transform.zoom || 1;
+                    const px = transform.pan_x || 0;
+                    const py = transform.pan_y || 0;
+                    return {
+                        x: worldX * z + px,
+                        y: worldY * z + py
+                    };
+                }
+                return { x: worldX, y: worldY };
+            };
+            
+            // Calculate selection rectangle in screen coordinates
+            const startScreen = worldToScreen(this.boxSelectionStart.x, this.boxSelectionStart.y);
+            const endScreen = worldToScreen(this.boxSelectionEnd.x, this.boxSelectionEnd.y);
+            const width = endScreen.x - startScreen.x;
+            const height = endScreen.y - startScreen.y;
+            
+            // Draw selection rectangle
+            ctx.strokeRect(startScreen.x, startScreen.y, width, height);
+            
+            // Reset line dash
+            ctx.setLineDash([]);
+            ctx.restore();
+            
+            }
+        
+        // Draw resize handles for selected objects
+        if (window.appState && window.appState.selectedPaths && window.appState.selectedPaths.length > 0) {
+            const selectedPaths = window.appState.selectedPaths.map(index => window.appState.paths[index]).filter(path => path);
+            
+            if (selectedPaths.length > 0) {
+                const bounds = this.calculateBounds(selectedPaths);
+                if (bounds) {
+                    ctx.save();
+                    
+                    // Use dynamic handle sizing system
+                    const zoomFactor = transform ? transform.zoom : 1;
+                    const dynamicHandleSize = this.calculateDynamicHandleSize(zoomFactor);
+                    const adjustedLineWidth = (window.calculateDynamicLineWidth ? window.calculateDynamicLineWidth() : 1) / zoomFactor;
+                    
+                    // In desktop app, context is already transformed in renderSelectionOverlay
+                    // Check if we're in desktop environment by looking for Tauri API
+                    const contextAlreadyTransformed = typeof window.__TAURI__ !== 'undefined';
+                    this.drawResizeHandles(ctx, selectedPaths, bounds, dynamicHandleSize, adjustedLineWidth, transform, contextAlreadyTransformed);
+                    
+                    ctx.restore();
+                    }
+            }
+        }
+    }
+}
+
+// ============================================================================
+// XVG TOOLS OBJECT - Main tools interface
+// ============================================================================
+
+// Create tool instances with delayed initialization
+function initializeTools() {
+    // Prevent multiple initializations
+    if (window.xvgToolsInitialized) {
+        return true;
+    }
+    
+    : 'none',
+        hasCanvas: !!(window.appState && window.appState.canvas),
+        canvasWidth: window.appState?.canvas?.width,
+        canvasHeight: window.appState?.canvas?.height
     });
-  }
-  
-  calculateCombinedBounds() {
-    const pathBounds = this.calculateBounds(this.getSelectedPaths());
-    const imageBounds = this.calculateImageBounds(this.getSelectedImages());
     
-    if (!pathBounds && !imageBounds) return null;
-    if (!pathBounds) return imageBounds;
-    if (!imageBounds) return pathBounds;
+    // Check if appState is available
+    if (!window.appState) {
+        console.warn('appState not available, tools will be initialized later');
+        return false;
+    }
+    
+    try {
+        window.XVGPanTool = new PanTool();
+        window.XVGSelectionTool = new SelectionTool();
+        // Ensure selection tool is in clean state
+        window.XVGSelectionTool.reset();
+        
+        window.xvgToolsInitialized = true;
+        
+        // Add test functions to window for debugging
+        window.testTools = function() {
+            if (window.XVGPanTool) {
+                }
+            
+            if (window.XVGSelectionTool) {
+                }
+        };
+        
+        // Add a simple test function to check if tools are working
+        window.debugToolsStatus = function() {
+            };
+        
+        return true;
+    } catch (error) {
+        console.error('Failed to initialize XVG Tools:', error);
+        return false;
+    }
+}
+
+// Wait for DOM to be ready before trying to initialize tools
+document.addEventListener('DOMContentLoaded', () => {
+    ,
+        canvasWidth: window.appState?.canvas?.width,
+        canvasHeight: window.appState?.canvas?.height
+    });
+    
+    // Check if core is already ready when tools load
+    if (window.appState && window.appState.canvas && window.appState.canvas.width && window.appState.canvas.height) {
+        initializeTools();
+        window.xvgToolsInitialized = true;
+        return;
+    }
+    
+    // Listen for core ready event instead of polling
+    window.addEventListener('xvg-core-ready', (event) => {
+        if (!window.xvgToolsInitialized) {
+            initializeTools();
+            window.xvgToolsInitialized = true;
+        } else {
+            }
+    });
+});
+
+// XVG Tools object for external access
+window.XVGTools = {
+    cut: {
+        cutPolylineWithPolygon(polyline, polygon) {
+            return []; // Placeholder
+        },
+        
+        cutWithPolygon(paths, selectedPaths, polygon) {
+            if (!paths || paths.length === 0 || !polygon || polygon.length < 6) {
+                return { changed: false, added: 0, removed: 0, cutPieces: [] };
+            }
+            
+            let changed = false;
+            let added = 0;
+            let removed = 0;
+            const cutPieces = []; // Store the cut pieces for grab/move functionality
+            
+            // Get polygon bounds for efficient intersection testing
+            const polygonBounds = this.getPolygonBounds(polygon);
+            
+            // Process paths in reverse order to safely remove items
+            for (let i = paths.length - 1; i >= 0; i--) {
+                const path = paths[i];
+                
+                // Check if path intersects with cutting polygon
+                if (this.pathIntersectsPolygon(path, polygon)) {
+                    // Extract the cut area from the path
+                    const cutResult = this.extractCutArea(path, polygon, polygonBounds);
+                    
+                    if (cutResult.cutPiece) {
+                        // Add the cut piece to the moveable pieces
+                        cutPieces.push(cutResult.cutPiece);
+                        
+                        // If there's a remaining part, replace the original path
+                        if (cutResult.remainingPath) {
+                            paths[i] = cutResult.remainingPath;
+                        } else {
+                            // If nothing remains, remove the original path
+                            paths.splice(i, 1);
+                            removed++;
+                        }
+                        
+                        added++;
+                        changed = true;
+                        
+                        }
+                }
+            }
+            
+            return { changed, added, removed, cutPieces };
+        },
+        
+        getPolygonBounds(polygon) {
+            if (!polygon || polygon.length < 6) return null;
+            
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            for (let i = 0; i < polygon.length; i += 2) {
+                if (i + 1 < polygon.length) {
+                    minX = Math.min(minX, polygon[i]);
+                    minY = Math.min(minY, polygon[i + 1]);
+                    maxX = Math.max(maxX, polygon[i]);
+                    maxY = Math.max(maxY, polygon[i + 1]);
+                }
+            }
+            
+            return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+        },
+        
+        extractCutArea(path, polygon, polygonBounds) {
+            // Extract the area of the path that intersects with the cutting polygon
+            if (!path || !polygon) {
+                return { cutPiece: null, remainingPath: path };
+            }
+            
+            if (path.type === 'image') {
+                return this.extractImageCutArea(path, polygon, polygonBounds);
+            } else if (path.type === 'path' || path.type === 'line') {
+                return this.extractVectorCutArea(path, polygon, polygonBounds);
+            } else if (path.type === 'rectangle') {
+                return this.extractRectangleCutArea(path, polygon, polygonBounds);
+            } else if (path.type === 'circle') {
+                return this.extractCircleCutArea(path, polygon, polygonBounds);
+            } else {
+                // For unknown types, create a simple cut piece if it intersects
+                if (this.pathIntersectsPolygon(path, polygon)) {
+                    const cutPiece = {
+                        ...path,
+                        id: path.id + '_cut_' + Date.now(),
+                        isCutPiece: true,
+                        cutPolygon: polygon
+                    };
+                    return { cutPiece, remainingPath: null };
+                }
+                return { cutPiece: null, remainingPath: path };
+            }
+        },
+        
+        extractImageCutArea(imagePath, polygon, polygonBounds) {
+            // For images, create a cut piece with the intersection area
+            if (!this.pathIntersectsPolygon(imagePath, polygon)) {
+                return { cutPiece: null, remainingPath: imagePath };
+            }
+            
+            // Calculate the intersection bounds
+            const imgBounds = imagePath.bounds;
+            const intersectionBounds = {
+                minX: Math.max(imgBounds.minX, polygonBounds.x),
+                minY: Math.max(imgBounds.minY, polygonBounds.y),
+                maxX: Math.min(imgBounds.maxX, polygonBounds.x + polygonBounds.width),
+                maxY: Math.min(imgBounds.maxY, polygonBounds.y + polygonBounds.height)
+            };
+            
+            // Create cut piece with clipping mask
+            const cutPiece = {
+                ...imagePath,
+                id: imagePath.id + '_cut_' + Date.now(),
+                isCutPiece: true,
+                cutPolygon: polygon,
+                clipBounds: intersectionBounds,
+                bounds: {
+                    minX: intersectionBounds.minX,
+                    minY: intersectionBounds.minY,
+                    maxX: intersectionBounds.maxX,
+                    maxY: intersectionBounds.maxY
+                }
+            };
+            
+            // Create remaining image with hole (simplified - just mark as cut)
+            const remainingPath = {
+                ...imagePath,
+                cutHoles: imagePath.cutHoles ? [...imagePath.cutHoles, polygon] : [polygon]
+            };
+            
+            return { cutPiece, remainingPath };
+        },
+        
+        extractVectorCutArea(vectorPath, polygon, polygonBounds) {
+            // For vector paths, properly segment the path at polygon intersections
+            if (!vectorPath.points || !this.pathIntersectsPolygon(vectorPath, polygon)) {
+                return { cutPiece: null, remainingPath: vectorPath };
+            }
+            
+            const segments = this.segmentPathByPolygon(vectorPath.points, polygon);
+            
+            let cutPiece = null;
+            let remainingPath = null;
+            
+            // Separate segments inside and outside the polygon
+            const insideSegments = segments.filter(seg => seg.isInside);
+            const outsideSegments = segments.filter(seg => !seg.isInside);
+            
+            // Create cut piece from inside segments
+            if (insideSegments.length > 0) {
+                const cutPoints = [];
+                insideSegments.forEach(segment => {
+                    cutPoints.push(...segment.points);
+                });
+                
+                if (cutPoints.length > 0) {
+                    cutPiece = {
+                        ...vectorPath,
+                        id: vectorPath.id + '_cut_' + Date.now(),
+                        points: cutPoints,
+                        isCutPiece: true,
+                        cutPolygon: polygon,
+                        bounds: this.calculatePathBounds(cutPoints)
+                    };
+                }
+            }
+            
+            // Create remaining path from outside segments
+            if (outsideSegments.length > 0) {
+                const remainingPoints = [];
+                outsideSegments.forEach(segment => {
+                    remainingPoints.push(...segment.points);
+                });
+                
+                if (remainingPoints.length > 0) {
+                    remainingPath = {
+                        ...vectorPath,
+                        points: remainingPoints,
+                        bounds: this.calculatePathBounds(remainingPoints)
+                    };
+                }
+            }
+            
+            return { cutPiece, remainingPath };
+        },
+        
+        segmentPathByPolygon(points, polygon) {
+            // Segment a path by a cutting polygon, returning segments marked as inside or outside
+            if (!points || points.length < 4 || !polygon || polygon.length < 6) {
+                return [];
+            }
+            
+            const segments = [];
+            let currentSegment = { points: [], isInside: false };
+            
+            // Process points in pairs (x, y)
+            for (let i = 0; i < points.length; i += 2) {
+                if (i + 1 >= points.length) break;
+                
+                const x = points[i];
+                const y = points[i + 1];
+                const pointInside = this.pointInPolygon(x, y, polygon);
+                
+                // If this is the first point or the inside/outside state changed
+                if (currentSegment.points.length === 0 || currentSegment.isInside !== pointInside) {
+                    // Save the current segment if it has points
+                    if (currentSegment.points.length > 0) {
+                        segments.push(currentSegment);
+                    }
+                    
+                    // Start a new segment
+                    currentSegment = { points: [x, y], isInside: pointInside };
+                } else {
+                    // Continue the current segment
+                    currentSegment.points.push(x, y);
+                }
+            }
+            
+            // Add the final segment
+            if (currentSegment.points.length > 0) {
+                segments.push(currentSegment);
+            }
+            
+            // Ensure segments have minimum viable length
+            return segments.filter(seg => seg.points.length >= 4); // At least 2 points (4 coordinates)
+        },
+        
+        extractRectangleCutArea(rectPath, polygon, polygonBounds) {
+            // For rectangles, calculate intersection with cutting polygon
+            if (!this.pathIntersectsPolygon(rectPath, polygon)) {
+                return { cutPiece: null, remainingPath: rectPath };
+            }
+            
+            const rectBounds = rectPath.bounds;
+            
+            // Calculate intersection rectangle
+            const intersectionBounds = {
+                minX: Math.max(rectBounds.minX, polygonBounds.x),
+                minY: Math.max(rectBounds.minY, polygonBounds.y),
+                maxX: Math.min(rectBounds.maxX, polygonBounds.x + polygonBounds.width),
+                maxY: Math.min(rectBounds.maxY, polygonBounds.y + polygonBounds.height)
+            };
+            
+            // Only proceed if there's a valid intersection
+            if (intersectionBounds.minX >= intersectionBounds.maxX || 
+                intersectionBounds.minY >= intersectionBounds.maxY) {
+                return { cutPiece: null, remainingPath: rectPath };
+            }
+            
+            // Create cut piece as the intersection rectangle
+            const cutPiece = {
+                ...rectPath,
+                id: rectPath.id + '_cut_' + Date.now(),
+                isCutPiece: true,
+                cutPolygon: polygon,
+                bounds: intersectionBounds,
+                x: intersectionBounds.minX,
+                y: intersectionBounds.minY,
+                width: intersectionBounds.maxX - intersectionBounds.minX,
+                height: intersectionBounds.maxY - intersectionBounds.minY
+            };
+            
+            // For remaining path, mark it as having a cut hole
+            const remainingPath = {
+                ...rectPath,
+                cutHoles: rectPath.cutHoles ? [...rectPath.cutHoles, polygon] : [polygon]
+            };
+            
+            return { cutPiece, remainingPath };
+        },
+        
+        extractCircleCutArea(circlePath, polygon, polygonBounds) {
+            // For circles, create a cut piece if it intersects with the polygon
+            if (!this.pathIntersectsPolygon(circlePath, polygon)) {
+                return { cutPiece: null, remainingPath: circlePath };
+            }
+            
+            // Create cut piece with clipping mask
+            const cutPiece = {
+                ...circlePath,
+                id: circlePath.id + '_cut_' + Date.now(),
+                isCutPiece: true,
+                cutPolygon: polygon,
+                clipBounds: polygonBounds
+            };
+            
+            // Create remaining circle with hole
+            const remainingPath = {
+                ...circlePath,
+                cutHoles: circlePath.cutHoles ? [...circlePath.cutHoles, polygon] : [polygon]
+            };
+            
+            return { cutPiece, remainingPath };
+        },
+        
+        calculatePathBounds(points) {
+            if (!points || points.length === 0) return null;
+            
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            
+            points.forEach(point => {
+                if (Array.isArray(point) && point.length >= 2) {
+                    minX = Math.min(minX, point[0]);
+                    minY = Math.min(minY, point[1]);
+                    maxX = Math.max(maxX, point[0]);
+                    maxY = Math.max(maxY, point[1]);
+                }
+            });
+            
+            return { minX, minY, maxX, maxY };
+        },
+        
+        pointInPolygon(x, y, polygon) {
+            // Ray casting algorithm for point-in-polygon test
+            if (!polygon || polygon.length < 6) return false;
+            
+            let inside = false;
+            
+            for (let i = 0, j = polygon.length - 2; i < polygon.length; j = i, i += 2) {
+                const xi = polygon[i], yi = polygon[i + 1];
+                const xj = polygon[j], yj = polygon[j + 1];
+                
+                if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+                    inside = !inside;
+                }
+            }
+            
+            return inside;
+        },
+        
+        pathIntersectsPolygon(path, polygon) {
+            // Enhanced intersection test
+            if (!path || !path.bounds || !polygon || polygon.length < 6) {
+                return false;
+            }
+            
+            // Get path bounds
+            const pathBounds = path.bounds;
+            
+            // Get polygon bounds
+            const polygonBounds = this.getPolygonBounds(polygon);
+            if (!polygonBounds) return false;
+            
+            // Check if bounding boxes intersect
+            const boundsIntersect = !(pathBounds.maxX < polygonBounds.x || 
+                                    pathBounds.minX > polygonBounds.x + polygonBounds.width ||
+                                    pathBounds.maxY < polygonBounds.y || 
+                                    pathBounds.minY > polygonBounds.y + polygonBounds.height);
+            
+            if (!boundsIntersect) return false;
+            
+            // For more precise intersection, check if any path points are inside polygon
+            if (path.points) {
+                for (let point of path.points) {
+                    if (Array.isArray(point) && point.length >= 2) {
+                        if (this.pointInPolygon(point[0], point[1], polygon)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            
+            // Check if any polygon points are inside path bounds (basic test)
+            for (let i = 0; i < polygon.length; i += 2) {
+                if (i + 1 < polygon.length) {
+                    const x = polygon[i], y = polygon[i + 1];
+                    if (x >= pathBounds.minX && x <= pathBounds.maxX &&
+                        y >= pathBounds.minY && y <= pathBounds.maxY) {
+                        return true;
+                    }
+                }
+            }
+            
+            return boundsIntersect; // Fallback to bounds intersection
+        },
+        
+        cutImageWithPolygon(imagePath, polygon) {
+            // Create a masked version of the image
+            // This is a simplified implementation - in a full version you'd use canvas clipping
+            if (!imagePath || !imagePath.data || !polygon) return null;
+            
+            // For now, return a copy of the image with the cutting area marked
+            // In a full implementation, you'd create a new image with the cut area masked out
+            const cutImage = {
+                ...imagePath,
+                id: imagePath.id + '_cut',
+                cutMask: polygon,
+                type: 'image_cut'
+            };
+            
+            return cutImage;
+        },
+        
+        splitPathWithPolygon(path, polygon) {
+            // Split a vector path with a cutting polygon
+            // This is a simplified implementation - in a full version you'd use proper path intersection algorithms
+            if (!path || !path.data || !polygon) return [];
+            
+            // For now, return the original path as a single piece
+            // In a full implementation, you'd split the path at intersection points
+            return [{
+                ...path,
+                id: path.id + '_split',
+                type: path.type + '_split'
+            }];
+        }
+    },
+    
+    boolean: {
+        union(path1, path2) {
+            return null; // Placeholder
+        },
+        
+        difference(path1, path2) {
+            return null; // Placeholder
+        },
+        
+        intersection(path1, path2) {
+            return null; // Placeholder
+        }
+    },
+    
+    utilities: {
+        simplifyPath(path, tolerance = 1.0) {
+            return path; // Placeholder
+        }
+    }
+};
+
+// Add test function for selection tool
+window.testSelectionTool = function() {
+    if (window.XVGSelectionTool) {
+        // Test starting a selection
+        window.XVGSelectionTool.startBoxSelection(100, 100);
+        ');
+        
+        // Test updating selection
+        window.XVGSelectionTool.updateBoxSelection(200, 200);
+        ');
+        
+        // Test if it should show
+        );
+        
+        // Clean up
+        window.XVGSelectionTool.clearSelectionBox();
+        } else {
+        }
+};
+
+// Add debug function to verify tool status
+window.debugToolsStatus = function() {
+    if (window.XVGPanTool) {
+        }
+    
+    if (window.XVGSelectionTool) {
+        }
     
     return {
-      minX: Math.min(pathBounds.minX, imageBounds.minX),
-      minY: Math.min(pathBounds.minY, imageBounds.minY),
-      maxX: Math.max(pathBounds.maxX, imageBounds.maxX),
-      maxY: Math.max(pathBounds.maxY, imageBounds.maxY)
+        initialized: window.xvgToolsInitialized,
+        coreReady: window.xvgCoreReadyDispatched,
+        panTool: !!window.XVGPanTool,
+        selectionTool: !!window.XVGSelectionTool,
+        xvgTools: !!window.XVGTools
     };
-  }
-  
-  calculateImageBounds(selectedImages) {
-    if (!selectedImages || selectedImages.length === 0) return null;
-    
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    
-    selectedImages.forEach(img => {
-      if (img) {
-        minX = Math.min(minX, img.x);
-        minY = Math.min(minY, img.y);
-        maxX = Math.max(maxX, img.x + img.width);
-        maxY = Math.max(maxY, img.y + img.height);
-      }
-    });
-    
-    if (minX === Infinity) return null;
-    
-    return { minX, minY, maxX, maxY };
-  }
-  
-  findPathAtPoint(worldX, worldY) {
-    const paths = this.core.state.appState.paths;
-    if (!paths || !Array.isArray(paths)) return -1;
-    
-    const tolerance = this.calculateDynamicHitTolerance(this.core.state.appState.canvasTransform.zoom);
-    
-    for (let i = paths.length - 1; i >= 0; i--) {
-      const path = paths[i];
-      if (this.isPointInPath({ x: worldX, y: worldY }, path, tolerance)) {
-        return i;
-      }
+}
+
+// Add comprehensive selection test function
+window.testSelectionSystem = function() {
+    // Check if tools are available
+    if (!window.XVGSelectionTool) {
+        console.error('❌ XVGSelectionTool not available!');
+        return false;
     }
     
-    return -1;
-  }
-  
-  isPointInPath(worldPoint, path, tolerance = 5) {
-    if (!path || !path.data) return false;
+    if (!window.appState) {
+        console.error('❌ appState not available!');
+        return false;
+    }
     
-    const bounds = this.calculateBounds([path]);
-    if (!bounds) return false;
+    if (!window.appState.paths || window.appState.paths.length === 0) {
+        console.warn('⚠️ No paths available for testing');
+        return false;
+    }
     
-    // Expand bounds by tolerance
-    if (worldPoint.x < bounds.minX - tolerance || worldPoint.x > bounds.maxX + tolerance ||
-        worldPoint.y < bounds.minY - tolerance || worldPoint.y > bounds.maxY + tolerance) {
-      return false;
+    => ({ index: i, type: p.type, hasData: !!p.data })));
+    
+    // Test single click selection
+    try {
+        window.XVGSelectionTool.startSelection(100, 100);
+        const selectedIndices = window.XVGSelectionTool.endSelection(window.appState.paths);
+        } catch (error) {
+        console.error('❌ Single click test failed:', error);
+        return false;
+    }
+    
+    // Test box selection
+    try {
+        window.XVGSelectionTool.startSelection(50, 50);
+        window.XVGSelectionTool.updateSelection(150, 150); // Should trigger box selection
+        const selectedIndices = window.XVGSelectionTool.endSelection(window.appState.paths);
+        } catch (error) {
+        console.error('❌ Box selection test failed:', error);
+        return false;
+    }
+    
+    // Test findPathAtPoint directly
+    try {
+        const hitIndex = window.XVGSelectionTool.findPathAtPoint(100, 100, window.appState.paths);
+        } catch (error) {
+        console.error('❌ findPathAtPoint test failed:', error);
+        return false;
     }
     
     return true;
-  }
-  
-  getPathPosition(path) {
-    if (!path || !path.data || path.data.length < 2) return { x: 0, y: 0 };
-    return { x: path.data[0], y: path.data[1] };
-  }
-  
-  moveSelectedPaths(dx, dy) {
-    const s = this.core.state;
-    if (!s?.appState?.selectedPaths || !s?.appState?.paths) return;
-    
-    s.appState.selectedPaths.forEach(index => {
-      const path = s.appState.paths[index];
-      if (path && path.data && Array.isArray(path.data)) {
-        for (let i = 0; i < path.data.length; i += 2) {
-          if (i + 1 < path.data.length) {
-            path.data[i] += dx;
-            path.data[i + 1] += dy;
-          }
-        }
-      }
-    });
-  }
-  
-  performBoxSelection() {
-    const s = this.core.state;
-    if (!this.boxSelectionStart || !this.boxSelectionEnd) return;
-    
-    const minX = Math.min(this.boxSelectionStart.x, this.boxSelectionEnd.x);
-    const minY = Math.min(this.boxSelectionStart.y, this.boxSelectionEnd.y);
-    const maxX = Math.max(this.boxSelectionStart.x, this.boxSelectionEnd.x);
-    const maxY = Math.max(this.boxSelectionStart.y, this.boxSelectionEnd.y);
-    
-    const selectedIndices = [];
-    
-    for (let i = 0; i < s.appState.paths.length; i++) {
-      const path = s.appState.paths[i];
-      const bounds = this.calculateBounds([path]);
-      
-      if (bounds && this.boundsIntersect(bounds, { minX, minY, maxX, maxY })) {
-        selectedIndices.push(i);
-      }
-    }
-    
-    s.appState.selectedPaths = selectedIndices;
-    s.appState.selectedImages = [];
-  }
-  
-  boundsIntersect(bounds1, bounds2) {
-    return !(bounds1.maxX < bounds2.minX || bounds1.minX > bounds2.maxX ||
-             bounds1.maxY < bounds2.minY || bounds1.minY > bounds2.maxY);
-  }
-  
-  // ============================================================================
-  // BOUNDS CALCULATION
-  // ============================================================================
-  
-  calculateBounds(selectedPaths) {
-    if (!selectedPaths || selectedPaths.length === 0) return null;
-    
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    
-    selectedPaths.forEach(path => {
-      if (!path || !path.data || path.data.length < 2) return;
-      
-      // Simple bounds calculation from data array
-      for (let i = 0; i < path.data.length; i += 2) {
-        if (i + 1 < path.data.length) {
-          const x = path.data[i];
-          const y = path.data[i + 1];
-          minX = Math.min(minX, x);
-          minY = Math.min(minY, y);
-          maxX = Math.max(maxX, x);
-          maxY = Math.max(maxY, y);
-        }
-      }
-    });
-    
-    if (minX === Infinity) return null;
-    
-    return { minX, minY, maxX, maxY };
-  }
-  
-  // ============================================================================
-  // RESIZE LOGIC
-  // ============================================================================
-  
-  getResizeHandleAt(worldPoint, bounds) {
-    const handleSize = this.calculateDynamicHandleSize(this.core.state.appState.canvasTransform.zoom);
-    const tolerance = handleSize / this.core.state.appState.canvasTransform.zoom;
-    
-    const handles = [
-      { x: bounds.minX, y: bounds.minY, type: 'top-left' },
-      { x: bounds.maxX, y: bounds.minY, type: 'top-right' },
-      { x: bounds.maxX, y: bounds.maxY, type: 'bottom-right' },
-      { x: bounds.minX, y: bounds.maxY, type: 'bottom-left' },
-      { x: (bounds.minX + bounds.maxX) / 2, y: bounds.minY, type: 'top' },
-      { x: bounds.maxX, y: (bounds.minY + bounds.maxY) / 2, type: 'right' },
-      { x: (bounds.minX + bounds.maxX) / 2, y: bounds.maxY, type: 'bottom' },
-      { x: bounds.minX, y: (bounds.minY + bounds.maxY) / 2, type: 'left' }
-    ];
-    
-    for (const handle of handles) {
-      const dx = worldPoint.x - handle.x;
-      const dy = worldPoint.y - handle.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      if (distance <= tolerance) {
-        return handle.type;
-      }
-    }
-    
-    return null;
-  }
-  
-  handleResize(currentPoint, handleType, initialBounds, initialPaths) {
-    const newBounds = this.calculateNewBounds(currentPoint, handleType, initialBounds);
-    
-    const originalWidth = initialBounds.maxX - initialBounds.minX;
-    const originalHeight = initialBounds.maxY - initialBounds.minY;
-    const newWidth = newBounds.maxX - newBounds.minX;
-    const newHeight = newBounds.maxY - newBounds.minY;
-    
-    if (originalWidth === 0 || originalHeight === 0) return;
-    
-    const scaleX = newWidth / originalWidth;
-    const scaleY = newHeight / originalHeight;
-    
-    const s = this.core.state;
-    
-    // Resize paths
-    s.appState.selectedPaths.forEach((index, i) => {
-      const path = s.appState.paths[index];
-      const initialPath = initialPaths[i];
-      
-      if (path && initialPath && path.data && initialPath.data) {
-        for (let j = 0; j < path.data.length; j += 2) {
-          if (j + 1 < path.data.length) {
-            const relX = initialPath.data[j] - initialBounds.minX;
-            const relY = initialPath.data[j + 1] - initialBounds.minY;
-            path.data[j] = newBounds.minX + relX * scaleX;
-            path.data[j + 1] = newBounds.minY + relY * scaleY;
-          }
-        }
-      }
-    });
-    
-    // Resize images
-    if (this.initialImages && s.appState.selectedImages) {
-      s.appState.selectedImages.forEach((index, i) => {
-        const img = s.appState.images[index];
-        const initialImg = this.initialImages[i];
-        
-        if (img && initialImg) {
-          const relX = initialImg.x - initialBounds.minX;
-          const relY = initialImg.y - initialBounds.minY;
-          
-          img.x = newBounds.minX + relX * scaleX;
-          img.y = newBounds.minY + relY * scaleY;
-          img.width = initialImg.width * scaleX;
-          img.height = initialImg.height * scaleY;
-        }
-      });
-    }
-  }
-  
-  calculateNewBounds(currentPoint, handleType, initialBounds) {
-    let { minX, minY, maxX, maxY } = initialBounds;
-    
-    switch (handleType) {
-      case 'top-left':
-        minX = currentPoint.x;
-        minY = currentPoint.y;
-        break;
-      case 'top-right':
-        maxX = currentPoint.x;
-        minY = currentPoint.y;
-        break;
-      case 'bottom-right':
-        maxX = currentPoint.x;
-        maxY = currentPoint.y;
-        break;
-      case 'bottom-left':
-        minX = currentPoint.x;
-        maxY = currentPoint.y;
-        break;
-      case 'top':
-        minY = currentPoint.y;
-        break;
-      case 'right':
-        maxX = currentPoint.x;
-        break;
-      case 'bottom':
-        maxY = currentPoint.y;
-        break;
-      case 'left':
-        minX = currentPoint.x;
-        break;
-    }
-    
-    return { minX, minY, maxX, maxY };
-  }
-  
-  // ============================================================================
-  // DRAWING METHODS
-  // ============================================================================
-  
-  drawSelectionBox() {
-    // This will be called by the overlay rendering system
-    // Implementation depends on how the overlay canvas is set up
-  }
-  
-  clearSelectionBox() {
-    // This will be called by the overlay rendering system
-  }
-  
-  drawResizeHandles(ctx, bounds) {
-    if (!bounds) return;
-    
-    const handleSize = this.calculateDynamicHandleSize(this.core.state.appState.canvasTransform.zoom);
-    const halfHandle = handleSize / 2;
-    
-    const handles = [
-      { x: bounds.minX, y: bounds.minY },
-      { x: bounds.maxX, y: bounds.minY },
-      { x: bounds.maxX, y: bounds.maxY },
-      { x: bounds.minX, y: bounds.maxY },
-      { x: (bounds.minX + bounds.maxX) / 2, y: bounds.minY },
-      { x: bounds.maxX, y: (bounds.minY + bounds.maxY) / 2 },
-      { x: (bounds.minX + bounds.maxX) / 2, y: bounds.maxY },
-      { x: bounds.minX, y: (bounds.minY + bounds.maxY) / 2 }
-    ];
-    
-    ctx.fillStyle = this.handleColor;
-    ctx.strokeStyle = this.handleBorderColor;
-    ctx.lineWidth = 1;
-    
-    handles.forEach(handle => {
-      const screenPos = this.worldToScreen(handle.x, handle.y);
-      ctx.fillRect(screenPos.x - halfHandle, screenPos.y - halfHandle, handleSize, handleSize);
-      ctx.strokeRect(screenPos.x - halfHandle, screenPos.y - halfHandle, handleSize, handleSize);
-    });
-  }
 }
 
-// ============================================================================
-// TOOL INITIALIZATION
-// ============================================================================
-
-export function initializeTools(coreInstance) {
-  coreInstance.state.tools.pan = new PanTool(coreInstance);
-  coreInstance.state.tools.selection = new SelectionTool(coreInstance);
-  coreInstance.state.tools.image = new ImageTool(coreInstance);
-  
-  notify('info', 'Tools restored and initialized with complete functionality including image support.');
-}
-
-// ============================================================================
-// IMAGE TOOL - Image Placement, Selection, and Transformation
-// ============================================================================
-
-export class ImageTool {
-  constructor(coreInstance) {
-    this.core = coreInstance;
-    this.defaultImagePosition = { x: 100, y: 100 };
-  }
-  
-  /**
-   * Add an image to the canvas
-   * @param {HTMLImageElement} img - The loaded image element
-   * @param {string} filename - Original filename
-   */
-  addImageToCanvas(img, filename = 'image.png') {
-    if (!this.core || !this.core.state || !this.core.state.appState) {
-      console.error('[ImageTool] Core or appState not available');
-      return;
+// Add function to create test paths
+window.createTestPaths = function() {
+    if (!window.appState) {
+        console.error('❌ appState not available for creating test paths');
+        return;
     }
     
-    const s = this.core.state.appState;
-    
-    // Initialize images array if it doesn't exist
-    if (!s.images) {
-      s.images = [];
+    // Initialize paths array if it doesn't exist
+    if (!window.appState.paths) {
+        window.appState.paths = [];
     }
     
-    // Calculate placement position
-    // If there are existing images, offset the new one slightly
-    const offset = s.images.length * 20;
-    const x = this.defaultImagePosition.x + offset;
-    const y = this.defaultImagePosition.y + offset;
-    
-    // Create image data object
-    const imageData = {
-      id: `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      src: img.src, // Data URL
-      filename: filename,
-      x: x,
-      y: y,
-      width: img.width,
-      height: img.height,
-      originalWidth: img.width,
-      originalHeight: img.height,
-      rotation: 0,
-      opacity: 1,
-      visible: true,
-      locked: false,
-      layer: s.activeLayer || 0,
-      zIndex: s.images.length
+    // Create a simple rectangle path
+    const rectPath = {
+        id: 'test-rect-1',
+        type: 'path',
+        data: [50, 50, 150, 50, 150, 150, 50, 150, 50, 50], // Rectangle coordinates
+        style: {
+            stroke: '#0066cc',
+            strokeWidth: 2,
+            fill: 'rgba(0, 102, 204, 0.2)'
+        },
+        timestamp: Date.now()
     };
     
-    console.log('[ImageTool] Adding image to canvas:', {
-      id: imageData.id,
-      filename: imageData.filename,
-      position: { x: imageData.x, y: imageData.y },
-      size: { width: imageData.width, height: imageData.height },
-      layer: imageData.layer,
-      totalImages: s.images.length + 1
-    });
+    // Create a circle-like path (octagon)
+    const circlePath = {
+        id: 'test-circle-1',
+        type: 'path',
+        data: [200, 100, 220, 80, 250, 80, 270, 100, 270, 130, 250, 150, 220, 150, 200, 130, 200, 100], // Octagon
+        style: {
+            stroke: '#cc6600',
+            strokeWidth: 2,
+            fill: 'rgba(204, 102, 0, 0.2)'
+        },
+        timestamp: Date.now() + 1
+    };
     
-    // Add to images array
-    s.images.push(imageData);
+    // Create a triangle path
+    const trianglePath = {
+        id: 'test-triangle-1',
+        type: 'path',
+        data: [100, 200, 150, 250, 50, 250, 100, 200], // Triangle
+        style: {
+            stroke: '#009900',
+            strokeWidth: 2,
+            fill: 'rgba(0, 153, 0, 0.2)'
+        },
+        timestamp: Date.now() + 2
+    };
     
-    // Clear path selection and select this image
-    s.selectedPaths = [];
-    s.selectedImages = [s.images.length - 1];
+    // Add paths to appState
+    window.appState.paths.push(rectPath, circlePath, trianglePath);
     
-    // Mark as modified
-    s.isModified = true;
-    
-    // Render the canvas
-    if (this.core.renderCanvas) {
-      this.core.renderCanvas();
+    // Trigger a render if possible
+    if (window.renderCanvas && typeof window.renderCanvas === 'function') {
+        try {
+            window.renderCanvas();
+            } catch (error) {
+            console.warn('⚠️ Could not trigger canvas render:', error);
+        }
+    }
+};
+
+// Enhanced test function that creates paths if needed
+window.testSelectionSystemComplete = function() {
+    // Check if XVGSelectionTool is available
+    if (!window.XVGSelectionTool) {
+        console.error('❌ XVGSelectionTool not available');
+        return false;
     }
     
-    console.log('[ImageTool] Image added successfully. Total images:', s.images.length);
-  }
-  
-  /**
-   * Get the image at a specific world coordinate
-   * @param {number} worldX - World X coordinate
-   * @param {number} worldY - World Y coordinate
-   * @returns {number} Index of the image, or -1 if not found
-   */
-  getImageAt(worldX, worldY) {
-    const s = this.core.state.appState;
-    if (!s.images || s.images.length === 0) return -1;
-    
-    // Check from top to bottom (reverse order for z-index)
-    for (let i = s.images.length - 1; i >= 0; i--) {
-      const img = s.images[i];
-      if (!img.visible) continue;
-      
-      // Simple bounding box check
-      if (worldX >= img.x && worldX <= img.x + img.width &&
-          worldY >= img.y && worldY <= img.y + img.height) {
-        return i;
-      }
+    // Check if appState is available
+    if (!window.appState) {
+        console.error('❌ appState not available');
+        return false;
     }
     
-    return -1;
-  }
-  
-  /**
-   * Move selected images by a delta
-   * @param {number} dx - Delta X
-   * @param {number} dy - Delta Y
-   */
-  moveSelectedImages(dx, dy) {
-    const s = this.core.state.appState;
-    if (!s.selectedImages || s.selectedImages.length === 0) return;
+    // Create test paths if none exist
+    if (!window.appState.paths || window.appState.paths.length === 0) {
+        window.createTestPaths();
+        }
     
-    s.selectedImages.forEach(index => {
-      const img = s.images[index];
-      if (img && !img.locked) {
-        img.x += dx;
-        img.y += dy;
-      }
-    });
+    // Test single-click selection
+    try {
+        // Test point at (100, 100) - should hit the rectangle
+        const testPoint = { x: 100, y: 100 };
+        const result = window.XVGSelectionTool.handleSingleClick(testPoint.x, testPoint.y, window.appState.paths);
+        // Check if any paths were selected
+        } catch (error) {
+        console.error('❌ Single-click test failed:', error);
+    }
     
-    s.isModified = true;
-  }
-  
-  /**
-   * Resize selected images
-   * @param {object} newBounds - New bounding box { minX, minY, maxX, maxY }
-   * @param {object} originalBounds - Original bounding box
-   */
-  resizeSelectedImages(newBounds, originalBounds) {
-    const s = this.core.state.appState;
-    if (!s.selectedImages || s.selectedImages.length === 0) return;
-    
-    const scaleX = (newBounds.maxX - newBounds.minX) / (originalBounds.maxX - originalBounds.minX);
-    const scaleY = (newBounds.maxY - newBounds.minY) / (originalBounds.maxY - originalBounds.minY);
-    
-    s.selectedImages.forEach(index => {
-      const img = s.images[index];
-      if (img && !img.locked) {
-        // Calculate relative position within original bounds
-        const relX = img.x - originalBounds.minX;
-        const relY = img.y - originalBounds.minY;
+    // Test box selection
+    try {
+        // Start box selection
+        window.XVGSelectionTool.startBoxSelection(25, 25);
+        ');
         
-        // Apply scale and new position
-        img.x = newBounds.minX + relX * scaleX;
-        img.y = newBounds.minY + relY * scaleY;
-        img.width = img.width * scaleX;
-        img.height = img.height * scaleY;
-      }
-    });
+        // Update box selection to cover the rectangle
+        window.XVGSelectionTool.updateBoxSelection(175, 175);
+        ');
+        
+        // Check if box should be shown
+        const shouldShow = window.XVGSelectionTool.shouldShowSelectionBox();
+        // Finish box selection
+        const boxResult = window.XVGSelectionTool.finishBoxSelection(window.appState.paths);
+        // Check selected items
+        } catch (error) {
+        console.error('❌ Box selection test failed:', error);
+    }
     
-    s.isModified = true;
-  }
-  
-  /**
-   * Calculate bounds for selected images
-   * @returns {object|null} Bounding box or null
-   */
-  calculateSelectedImagesBounds() {
-    const s = this.core.state.appState;
-    if (!s.selectedImages || s.selectedImages.length === 0) return null;
+    // Test findPathAtPoint directly
+    try {
+        const foundPathIndex = window.XVGSelectionTool.findPathAtPoint(100, 100, window.appState.paths);
+        :', foundPathIndex);
+        
+        if (foundPathIndex !== -1 && window.appState.paths[foundPathIndex]) {
+            const foundPath = window.appState.paths[foundPathIndex];
+            }
+        
+    } catch (error) {
+        console.error('❌ findPathAtPoint test failed:', error);
+    }
     
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    // Test coordinate system verification
+    try {
+        // Test coordinate conversion functions
+        const canvas = document.getElementById('canvas');
+        if (canvas) {
+            const rect = canvas.getBoundingClientRect();
+            // Test screen to canvas conversion
+            const screenPoint = { x: rect.left + 100, y: rect.top + 100 };
+            if (window.screenToCanvas) {
+                const canvasPoint = window.screenToCanvas(screenPoint.x, screenPoint.y);
+                // Test reverse conversion
+                if (window.canvasToScreen) {
+                    const backToScreen = window.canvasToScreen(canvasPoint.x, canvasPoint.y);
+                    const conversionError = Math.abs(backToScreen.x - screenPoint.x) + Math.abs(backToScreen.y - screenPoint.y);
+                    if (conversionError > 1) {
+                        console.warn('⚠️ High coordinate conversion error detected!');
+                    } else {
+                        }
+                }
+            } else {
+                console.error('❌ screenToCanvas function not available');
+            }
+        } else {
+            console.error('❌ Canvas element not found');
+        }
+        
+        // Test canvas transform state
+        if (window.appState && window.appState.canvasTransform) {
+            } else {
+            console.warn('⚠️ Canvas transform not available in appState');
+        }
+        
+    } catch (error) {
+        console.error('❌ Coordinate system test failed:', error);
+    }
     
-    s.selectedImages.forEach(index => {
-      const img = s.images[index];
-      if (img) {
-        minX = Math.min(minX, img.x);
-        minY = Math.min(minY, img.y);
-        maxX = Math.max(maxX, img.x + img.width);
-        maxY = Math.max(maxY, img.y + img.height);
-      }
-    });
+    // Test path bounds verification
+    try {
+        if (window.appState.paths && window.appState.paths.length > 0) {
+            window.appState.paths.forEach((path, index) => {
+                :`);
+                
+                if (path.type === 'rectangle' && path.data && path.data.length >= 4) {
+                    const bounds = {
+                        x: path.data[0],
+                        y: path.data[1], 
+                        width: path.data[2],
+                        height: path.data[3]
+                    };
+                    // Test if point (100, 100) should be inside this rectangle
+                    const testX = 100, testY = 100;
+                    const shouldBeInside = testX >= bounds.x && testX <= bounds.x + bounds.width &&
+                                         testY >= bounds.y && testY <= bounds.y + bounds.height;
+                    should be inside:`, shouldBeInside);
+                    
+                } else if (path.type === 'circle' && path.data && path.data.length >= 3) {
+                    const centerX = path.data[0];
+                    const centerY = path.data[1];
+                    const radius = path.data[2];
+                    , radius: ${radius}`);
+                    
+                    // Test if point (100, 100) should be inside this circle
+                    const testX = 100, testY = 100;
+                    const distance = Math.sqrt((testX - centerX) ** 2 + (testY - centerY) ** 2);
+                    const shouldBeInside = distance <= radius;
+                    distance: ${distance}, should be inside:`, shouldBeInside);
+                    
+                } else {
+                    : 'no data');
+                }
+            });
+        }
+        
+    } catch (error) {
+        console.error('❌ Path bounds test failed:', error);
+    }
     
-    if (minX === Infinity) return null;
-    
-    return { minX, minY, maxX, maxY };
-  }
+    return true;
 }
+
+
+
+// ...
+
+
+
