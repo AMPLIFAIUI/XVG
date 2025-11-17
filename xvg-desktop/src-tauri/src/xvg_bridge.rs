@@ -102,7 +102,7 @@ impl XVGBridge {
             },
             "xvg" => self.import_xvg(&file_path).await,
             "png" | "jpeg" | "jpg" => self.import_raster(&file_path).await,
-            _ => Err(anyhow::anyhow!("Unsupported file type: {}", file_type).to_string()),
+            _ => Err(anyhow::anyhow!("Unsupported file type: {}", file_type)),
         };
 
         match result {
@@ -687,6 +687,7 @@ impl XVGBridge {
                             tf: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
                             style: PathStyle::default(),
                             original_svg: None,
+                            layer_id: None,
                         };
                         
                         paths.push(path);

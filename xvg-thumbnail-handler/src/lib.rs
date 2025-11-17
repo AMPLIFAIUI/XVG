@@ -6,20 +6,19 @@
 
 use std::ffi::c_void;
 use std::ptr;
-use windows::core::{implement, Error, HRESULT, PCWSTR};
+use windows::core::{implement, Error, HRESULT};
 use windows::Win32::Foundation::{E_FAIL, E_INVALIDARG, E_NOTIMPL, S_OK};
 use windows::Win32::Graphics::Gdi::{
     CreateDIBSection, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, HBITMAP,
 };
-use windows::Win32::System::Com::{IStream, IUnknown};
-use windows::Win32::UI::Shell::{IThumbnailProvider, IThumbnailProvider_Impl, WTS_ALPHATYPE, WTSAT_ARGB};
-use windows::Win32::UI::WindowsAndMessaging::GetDC;
+use windows::Win32::System::Com::{IStream, STATFLAG, STATSTG};
+use windows::Win32::UI::Shell::{IThumbnailProvider, WTS_ALPHATYPE, WTSAT_ARGB};
 
 use xvg_runtime::{XVGRuntime, RenderTarget, RenderOutput};
 
 /// XVG Thumbnail Provider
 /// Implements IThumbnailProvider for Windows Shell Extension
-#[implement(IThumbnailProvider)]
+#[implement(windows::Win32::UI::Shell::IThumbnailProvider)]
 pub struct XVGThumbnailProvider {
     file_data: Vec<u8>,
 }
@@ -36,14 +35,17 @@ impl XVGThumbnailProvider {
     pub fn initialize_from_stream(&mut self, stream: &IStream) -> windows::core::Result<()> {
         unsafe {
             // Get stream size
-            let mut stat = std::mem::zeroed();
-            stream.Stat(&mut stat, 0)?;
+            let mut stat: STATSTG = std::mem::zeroed();
+            stream.Stat(&mut stat, STATFLAG(0))?;
             let size = stat.cbSize as usize;
 
             // Read stream data
             let mut buffer = vec![0u8; size];
             let mut bytes_read = 0u32;
-            stream.Read(buffer.as_mut_ptr() as *mut c_void, size as u32, Some(&mut bytes_read))?;
+            let hr = stream.Read(buffer.as_mut_ptr() as *mut c_void, size as u32, Some(&mut bytes_read));
+            if hr.is_err() {
+                return Err(Error::from(hr));
+            }
 
             self.file_data = buffer;
             Ok(())
@@ -51,7 +53,7 @@ impl XVGThumbnailProvider {
     }
 }
 
-impl IThumbnailProvider_Impl for XVGThumbnailProvider {
+impl windows::Win32::UI::Shell::IThumbnailProvider_Impl for XVGThumbnailProvider {
     fn GetThumbnail(&self, cx: u32, phbmp: *mut HBITMAP, pdwAlpha: *mut WTS_ALPHATYPE) -> windows::core::Result<()> {
         unsafe {
             if phbmp.is_null() {
@@ -64,10 +66,11 @@ impl IThumbnailProvider_Impl for XVGThumbnailProvider {
             }
 
             // Create XVG runtime and load the file
-            let mut runtime = XVGRuntime::new();
-            if let Err(_) = runtime.load(&self.file_data) {
-                return Err(Error::from(E_FAIL));
-            }
+            let runtime = XVGRuntime::load(&self.file_data);
+            let mut runtime = match runtime {
+                Ok(r) => r,
+                Err(_) => return Err(Error::from(E_FAIL)),
+            };
 
             // Render to bitmap
             let size = cx;
@@ -83,6 +86,10 @@ impl IThumbnailProvider_Impl for XVGThumbnailProvider {
 
             // Create Windows bitmap from pixel data
             let bitmap = create_bitmap_from_rgba(&pixels, size, size);
+            let bitmap = match bitmap {
+                Ok(b) => b,
+                Err(_) => return Err(Error::from(E_FAIL)),
+            };
             if bitmap.is_invalid() {
                 return Err(Error::from(E_FAIL));
             }
@@ -100,8 +107,9 @@ impl IThumbnailProvider_Impl for XVGThumbnailProvider {
 }
 
 /// Create a Windows HBITMAP from RGBA pixel data
-unsafe fn create_bitmap_from_rgba(pixels: &[u8], width: u32, height: u32) -> HBITMAP {
-    let hdc = GetDC(None);
+unsafe fn create_bitmap_from_rgba(pixels: &[u8], width: u32, height: u32) -> windows::core::Result<HBITMAP> {
+    // For DIB sections, we can pass None for hdc
+    let hdc = None;
 
     let mut bmi = BITMAPINFO {
         bmiHeader: BITMAPINFOHEADER {
@@ -110,7 +118,7 @@ unsafe fn create_bitmap_from_rgba(pixels: &[u8], width: u32, height: u32) -> HBI
             biHeight: -(height as i32), // Negative for top-down DIB
             biPlanes: 1,
             biBitCount: 32,
-            biCompression: BI_RGB as u32,
+            biCompression: BI_RGB.0,
             biSizeImage: 0,
             biXPelsPerMeter: 0,
             biYPelsPerMeter: 0,
@@ -128,7 +136,7 @@ unsafe fn create_bitmap_from_rgba(pixels: &[u8], width: u32, height: u32) -> HBI
         &mut bits,
         None,
         0,
-    );
+    )?;
 
     if !bitmap.is_invalid() && !bits.is_null() {
         // Copy RGBA pixels to bitmap (convert RGBA to BGRA for Windows)
@@ -142,7 +150,7 @@ unsafe fn create_bitmap_from_rgba(pixels: &[u8], width: u32, height: u32) -> HBI
         }
     }
 
-    bitmap
+    Ok(bitmap)
 }
 
 // COM DLL exports
