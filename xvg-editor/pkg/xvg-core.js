@@ -12,6 +12,14 @@ function __xvg_loadImage(url, onload, onerror){
 (function () {
   'use strict';
   
+  // Runtime configuration for WASM engine usage
+  const runtimeConfig = {
+    // Set to true to enforce WASM-only mode (throw errors instead of falling back)
+    wasmOnly: typeof process !== 'undefined' && process.env && process.env.XVG_WASM_ONLY === 'true',
+    // Enable verbose logging for engine usage
+    verboseEngineLogging: false
+  };
+  
   // Dynamic canvas sizing configuration
   const canvasConfig = {
     baseWidth: 2000,
@@ -1394,6 +1402,9 @@ function __xvg_loadImage(url, onload, onerror){
 
   async function undo() {
     if (!window.xvgEngines || !window.xvgEngines.crdt) {
+      if (runtimeConfig.wasmOnly) {
+        throw new Error('CRDT engine not available and WASM-only mode is enabled');
+      }
       console.warn('CRDT engine not available, falling back to local undo');
       return undoLocal();
     }
@@ -1408,6 +1419,9 @@ function __xvg_loadImage(url, onload, onerror){
       }
     } catch (error) {
       console.error('CRDT undo failed:', error);
+      if (runtimeConfig.wasmOnly) {
+        throw error;
+      }
       undoLocal();
     }
   }
@@ -1440,6 +1454,9 @@ function __xvg_loadImage(url, onload, onerror){
 
   async function redo() {
     if (!window.xvgEngines || !window.xvgEngines.crdt) {
+      if (runtimeConfig.wasmOnly) {
+        throw new Error('CRDT engine not available and WASM-only mode is enabled');
+      }
       console.warn('CRDT engine not available, falling back to local redo');
       return redoLocal();
     }
@@ -1454,6 +1471,9 @@ function __xvg_loadImage(url, onload, onerror){
       }
     } catch (error) {
       console.error('CRDT redo failed:', error);
+      if (runtimeConfig.wasmOnly) {
+        throw error;
+      }
       redoLocal();
     }
   }
@@ -5300,7 +5320,7 @@ function __xvg_loadImage(url, onload, onerror){
     }
   }
 
-  async function {
+  async function checkEngineStatus() {
     showNotification('Checking engine status...', 'info');
     
     try {
@@ -5387,7 +5407,7 @@ function __xvg_loadImage(url, onload, onerror){
     }
   }
 
-  async function {
+  async function testEngineConnections() {
     showNotification('Testing engine connections...', 'info');
     
     try {
@@ -6187,6 +6207,9 @@ fn main() -> @location(0) vec4<f32> {
           throw error;
         }
       } else {
+        if (runtimeConfig.wasmOnly) {
+          throw new Error('XVGSDFEngine not available and WASM-only mode is enabled');
+        }
         console.warn("XVGSDFEngine not available, using fallback implementation");
         
         // Generate training data using fallback method
@@ -8348,7 +8371,7 @@ fn main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {
   /* =============================
    * Test Functions for Debugging
    * ============================= */
-  function {
+  function testBasicRendering() {
     // Create a test rectangle
     const testRect = {
       type: 'rectangle',
@@ -8452,7 +8475,7 @@ fn main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {
   };
 
   // Add 3D demo function
-  function {
+  function demo3D() {
     
     // Create a 3D rectangle
     const rect3D = {
