@@ -1,27 +1,13 @@
 {
-  "$schema": "../gen/schemas/config.schema.json",
+  "$schema": "https://schema.tauri.app/config/2",
   "productName": "XVG Editor",
   "version": "0.1.0",
   "identifier": "com.xvg.editor",
   "build": {
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build",
     "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
-  },
-  "app": {
-    "security": {
-      "csp": null
-    },
-    "windows": [
-      {
-        "title": "XVG Editor",
-        "width": 1200,
-        "height": 800,
-        "resizable": true,
-        "fullscreen": false
-      }
-    ]
   },
   "bundle": {
     "active": true,
@@ -34,5 +20,18 @@
       "icons/icon.ico"
     ]
   },
-  "plugins": {}
+  "app": {
+    "windows": [
+      {
+        "title": "XVG Editor",
+        "width": 1200,
+        "height": 800,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  }
 }
