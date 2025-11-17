@@ -180,6 +180,115 @@ function passArray8ToWasm0(arg, malloc) {
     return ptr;
 }
 
+function _assertClass(instance, klass) {
+    if (!(instance instanceof klass)) {
+        throw new Error(`expected instance of ${klass.name}`);
+    }
+}
+/**
+ * Standalone function to apply CRDT operation (for backward compatibility)
+ * @param {XVGRuntime} runtime
+ * @param {string} op_json
+ */
+export function applyCrdtOp(runtime, op_json) {
+    _assertClass(runtime, XVGRuntime);
+    const ptr0 = passStringToWasm0(op_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.applyCrdtOp(runtime.__wbg_ptr, ptr0, len0);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+const XVG3DEngineFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_xvg3dengine_free(ptr >>> 0, 1));
+/**
+ * WASM wrapper for 3D Engine
+ */
+export class XVG3DEngine {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        XVG3DEngineFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_xvg3dengine_free(ptr, 0);
+    }
+    /**
+     * Get total index count
+     * @returns {number}
+     */
+    getTotalIndices() {
+        const ret = wasm.xvg3dengine_getTotalIndices(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Get total vertex count
+     * @returns {number}
+     */
+    getTotalVertices() {
+        const ret = wasm.xvg3dengine_getTotalVertices(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    constructor() {
+        const ret = wasm.xvg3dengine_new();
+        this.__wbg_ptr = ret >>> 0;
+        XVG3DEngineFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+}
+
+const XVGCRDTEngineFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_xvgcrdtengine_free(ptr >>> 0, 1));
+/**
+ * WASM wrapper for CRDT Engine
+ */
+export class XVGCRDTEngine {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        XVGCRDTEngineFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_xvgcrdtengine_free(ptr, 0);
+    }
+    /**
+     * Get author ID
+     * @returns {number}
+     */
+    getAuthorId() {
+        const ret = wasm.xvgcrdtengine_getAuthorId(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * Get Lamport clock
+     * @returns {number}
+     */
+    getLamportClock() {
+        const ret = wasm.xvgcrdtengine_getLamportClock(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @param {number} author_id
+     */
+    constructor(author_id) {
+        const ret = wasm.xvgcrdtengine_new(author_id);
+        this.__wbg_ptr = ret >>> 0;
+        XVGCRDTEngineFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+}
+
 const XVGFileFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_xvgfile_free(ptr >>> 0, 1));
@@ -352,6 +461,49 @@ export class XVGRuntime {
             throw takeFromExternrefTable0(ret[1]);
         }
         return takeFromExternrefTable0(ret[0]);
+    }
+}
+
+const XVGSDFEngineFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_xvgsdfengine_free(ptr >>> 0, 1));
+/**
+ * WASM wrapper for SDF Engine
+ */
+export class XVGSDFEngine {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        XVGSDFEngineFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_xvgsdfengine_free(ptr, 0);
+    }
+    /**
+     * Evaluate SDF at a given point
+     * @param {number} x
+     * @param {number} y
+     * @returns {number}
+     */
+    evaluateSDF(x, y) {
+        const ret = wasm.xvgsdfengine_evaluateSDF(this.__wbg_ptr, x, y);
+        return ret;
+    }
+    /**
+     * Initialize weights
+     */
+    initializeWeights() {
+        wasm.xvgsdfengine_initializeWeights(this.__wbg_ptr);
+    }
+    constructor() {
+        const ret = wasm.xvgsdfengine_new();
+        this.__wbg_ptr = ret >>> 0;
+        XVGSDFEngineFinalization.register(this, this.__wbg_ptr, this);
+        return this;
     }
 }
 

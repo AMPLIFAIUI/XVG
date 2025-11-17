@@ -1,8 +1,18 @@
 /* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
+export const __wbg_xvg3dengine_free: (a: number, b: number) => void;
+export const __wbg_xvgcrdtengine_free: (a: number, b: number) => void;
 export const __wbg_xvgfile_free: (a: number, b: number) => void;
 export const __wbg_xvgruntime_free: (a: number, b: number) => void;
+export const __wbg_xvgsdfengine_free: (a: number, b: number) => void;
+export const applyCrdtOp: (a: number, b: number, c: number) => [number, number];
+export const xvg3dengine_getTotalIndices: (a: number) => number;
+export const xvg3dengine_getTotalVertices: (a: number) => number;
+export const xvg3dengine_new: () => number;
+export const xvgcrdtengine_getAuthorId: (a: number) => number;
+export const xvgcrdtengine_getLamportClock: (a: number) => number;
+export const xvgcrdtengine_new: (a: number) => number;
 export const xvgfile_add_path: (a: number, b: any, c: any, d: any) => [number, number];
 export const xvgfile_clear_paths: (a: number) => void;
 export const xvgfile_decode: (a: any) => [number, number, number];
@@ -13,6 +23,10 @@ export const xvgfile_path_count: (a: number) => number;
 export const xvgruntime_extract: (a: number, b: number, c: number) => [number, number, number];
 export const xvgruntime_load: (a: number, b: number) => [number, number, number];
 export const xvgruntime_render: (a: number, b: number, c: number) => [number, number, number];
+export const xvgsdfengine_evaluateSDF: (a: number, b: number, c: number) => number;
+export const xvgsdfengine_initializeWeights: (a: number) => void;
+export const xvgsdfengine_new: () => number;
+export const xvgruntime_applyCrdtOp: (a: number, b: number, c: number) => [number, number];
 export const rust_zstd_wasm_shim_calloc: (a: number, b: number) => number;
 export const rust_zstd_wasm_shim_free: (a: number) => void;
 export const rust_zstd_wasm_shim_malloc: (a: number) => number;

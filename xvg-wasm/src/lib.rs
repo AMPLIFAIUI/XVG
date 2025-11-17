@@ -165,3 +165,85 @@ impl XVGFileWasm {
 
 // Export the stub for the old XVGFile struct
 pub use XVGFileWasm as XVGFile;
+
+// --- Engine Exports for Editor Integration ---
+
+use xvg_runtime::{SDFEngine, Scene3DEngine, CRDTEngine};
+
+/// WASM wrapper for SDF Engine
+#[wasm_bindgen(js_name = XVGSDFEngine)]
+pub struct XVGSDFEngineWasm(SDFEngine);
+
+#[wasm_bindgen(js_class = XVGSDFEngine)]
+impl XVGSDFEngineWasm {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> XVGSDFEngineWasm {
+        XVGSDFEngineWasm(SDFEngine::new())
+    }
+
+    /// Evaluate SDF at a given point
+    #[wasm_bindgen(js_name = evaluateSDF)]
+    pub fn evaluate_sdf(&self, x: f32, y: f32) -> f32 {
+        self.0.evaluate_sdf([x, y])
+    }
+
+    /// Initialize weights
+    #[wasm_bindgen(js_name = initializeWeights)]
+    pub fn initialize_weights(&mut self) {
+        self.0.initialize_weights();
+    }
+}
+
+/// WASM wrapper for 3D Engine
+#[wasm_bindgen(js_name = XVG3DEngine)]
+pub struct XVG3DEngineWasm(Scene3DEngine);
+
+#[wasm_bindgen(js_class = XVG3DEngine)]
+impl XVG3DEngineWasm {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> XVG3DEngineWasm {
+        XVG3DEngineWasm(Scene3DEngine::new())
+    }
+
+    /// Get total vertex count
+    #[wasm_bindgen(js_name = getTotalVertices)]
+    pub fn get_total_vertices(&self) -> usize {
+        self.0.get_total_vertices()
+    }
+
+    /// Get total index count
+    #[wasm_bindgen(js_name = getTotalIndices)]
+    pub fn get_total_indices(&self) -> usize {
+        self.0.get_total_indices()
+    }
+}
+
+/// WASM wrapper for CRDT Engine  
+#[wasm_bindgen(js_name = XVGCRDTEngine)]
+pub struct XVGCRDTEngineWasm(CRDTEngine);
+
+#[wasm_bindgen(js_class = XVGCRDTEngine)]
+impl XVGCRDTEngineWasm {
+    #[wasm_bindgen(constructor)]
+    pub fn new(author_id: u16) -> XVGCRDTEngineWasm {
+        XVGCRDTEngineWasm(CRDTEngine::new(author_id))
+    }
+
+    /// Get author ID
+    #[wasm_bindgen(js_name = getAuthorId)]
+    pub fn get_author_id(&self) -> u16 {
+        self.0.get_author_id()
+    }
+
+    /// Get Lamport clock
+    #[wasm_bindgen(js_name = getLamportClock)]
+    pub fn get_lamport_clock(&self) -> f64 {
+        self.0.get_lamport_clock() as f64
+    }
+}
+
+/// Standalone function to apply CRDT operation (for backward compatibility)
+#[wasm_bindgen(js_name = applyCrdtOp)]
+pub fn apply_crdt_op(runtime: &mut XVGRuntimeWasm, op_json: &str) -> Result<(), JsValue> {
+    runtime.apply_crdt_op(op_json)
+}

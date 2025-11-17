@@ -1,6 +1,40 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
+ * Standalone function to apply CRDT operation (for backward compatibility)
+ */
+export function applyCrdtOp(runtime: XVGRuntime, op_json: string): void;
+/**
+ * WASM wrapper for 3D Engine
+ */
+export class XVG3DEngine {
+  free(): void;
+  /**
+   * Get total index count
+   */
+  getTotalIndices(): number;
+  /**
+   * Get total vertex count
+   */
+  getTotalVertices(): number;
+  constructor();
+}
+/**
+ * WASM wrapper for CRDT Engine  
+ */
+export class XVGCRDTEngine {
+  free(): void;
+  /**
+   * Get author ID
+   */
+  getAuthorId(): number;
+  /**
+   * Get Lamport clock
+   */
+  getLamportClock(): number;
+  constructor(author_id: number);
+}
+/**
  * A safe, high-level wrapper around the Rust XVG file model.
  */
 export class XVGFile {
@@ -40,6 +74,11 @@ export class XVGFile {
 export class XVGRuntime {
   free(): void;
   /**
+   * Applies a CRDT operation to the file state.
+   * The operation is passed as a JSON string.
+   */
+  applyCrdtOp(op_json: string): void;
+  /**
    * Loads an XVG file from raw bytes (Uint8Array or ArrayBuffer).
    */
   constructor(data: Uint8Array);
@@ -54,13 +93,38 @@ export class XVGRuntime {
    */
   extract(format: string): Uint8Array;
 }
+/**
+ * WASM wrapper for SDF Engine
+ */
+export class XVGSDFEngine {
+  free(): void;
+  /**
+   * Evaluate SDF at a given point
+   */
+  evaluateSDF(x: number, y: number): number;
+  /**
+   * Initialize weights
+   */
+  initializeWeights(): void;
+  constructor();
+}
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
+  readonly __wbg_xvg3dengine_free: (a: number, b: number) => void;
+  readonly __wbg_xvgcrdtengine_free: (a: number, b: number) => void;
   readonly __wbg_xvgfile_free: (a: number, b: number) => void;
   readonly __wbg_xvgruntime_free: (a: number, b: number) => void;
+  readonly __wbg_xvgsdfengine_free: (a: number, b: number) => void;
+  readonly applyCrdtOp: (a: number, b: number, c: number) => [number, number];
+  readonly xvg3dengine_getTotalIndices: (a: number) => number;
+  readonly xvg3dengine_getTotalVertices: (a: number) => number;
+  readonly xvg3dengine_new: () => number;
+  readonly xvgcrdtengine_getAuthorId: (a: number) => number;
+  readonly xvgcrdtengine_getLamportClock: (a: number) => number;
+  readonly xvgcrdtengine_new: (a: number) => number;
   readonly xvgfile_add_path: (a: number, b: any, c: any, d: any) => [number, number];
   readonly xvgfile_clear_paths: (a: number) => void;
   readonly xvgfile_decode: (a: any) => [number, number, number];
@@ -71,6 +135,10 @@ export interface InitOutput {
   readonly xvgruntime_extract: (a: number, b: number, c: number) => [number, number, number];
   readonly xvgruntime_load: (a: number, b: number) => [number, number, number];
   readonly xvgruntime_render: (a: number, b: number, c: number) => [number, number, number];
+  readonly xvgsdfengine_evaluateSDF: (a: number, b: number, c: number) => number;
+  readonly xvgsdfengine_initializeWeights: (a: number) => void;
+  readonly xvgsdfengine_new: () => number;
+  readonly xvgruntime_applyCrdtOp: (a: number, b: number, c: number) => [number, number];
   readonly rust_zstd_wasm_shim_calloc: (a: number, b: number) => number;
   readonly rust_zstd_wasm_shim_free: (a: number) => void;
   readonly rust_zstd_wasm_shim_malloc: (a: number) => number;
