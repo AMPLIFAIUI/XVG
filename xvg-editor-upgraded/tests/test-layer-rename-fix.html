@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<!-- UI is for the xvg project and the rules are being followed. -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Layer Rename Fix Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 3px; }
+        .test-result.success { background-color: #d1ecf1; }
+        .test-result.error { background-color: #f8d7da; }
+        .test-result.warning { background-color: #fff3cd; }
+        button { margin: 5px; padding: 8px 15px; border: none; border-radius: 3px; cursor: pointer; }
+        button.success { background-color: #28a745; color: white; }
+        button.error { background-color: #dc3545; color: white; }
+        button.warning { background-color: #ffc107; color: black; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Layer Rename Fix Test</h1>
+    <p>This test verifies that the layer rename functionality handles prompt cancellation correctly.</p>
+    
+    <div class="test-section">
+        <h2>Layer System Status</h2>
+        <div id="layer-status"></div>
+        <button onclick="checkLayerSystem()" class="success">Check Layer System</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Rename Layer Test</h2>
+        <div id="rename-test-results"></div>
+        <button onclick="testRenameLayer()" class="success">Test Rename Layer</button>
+        <button onclick="testRenameWithNull()" class="warning">Test Rename with Null</button>
+        <button onclick="testRenameWithEmpty()" class="warning">Test Rename with Empty String</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Layer List</h2>
+        <div id="layer-list"></div>
+        <button onclick="refreshLayerList()" class="success">Refresh Layer List</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Results Log</h2>
+        <div id="test-log"></div>
+        <button onclick="clearLog()" class="warning">Clear Log</button>
+    </div>
+
+    <script>
+        // Test logging system
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('test-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `test-result ${type}`;
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+        
+        function clearLog() {
+            document.getElementById('test-log').innerHTML = '';
+        }
+        
+        // Test 1: Check Layer System
+        function checkLayerSystem() {
+            const statusDiv = document.getElementById('layer-status');
+            statusDiv.innerHTML = '';
+            
+            log('Checking Layer System...', 'info');
+            
+            if (!window.xvgLayerSystem) {
+                log('❌ XVG Layer System not available', 'error');
+                statusDiv.innerHTML += '<div class="test-result error">❌ XVG Layer System not available</div>';
+                return;
+            }
+            
+            log('✅ XVG Layer System available', 'success');
+            statusDiv.innerHTML += '<div class="test-result success">✅ XVG Layer System available</div>';
+            
+            const layers = window.xvgLayerSystem.getAllLayers();
+            log(`📊 Found ${layers.length} layers`, 'info');
+            statusDiv.innerHTML += `<div class="test-result success">📊 Found ${layers.length} layers</div>`;
+            
+            if (layers.length === 0) {
+                log('⚠️ No layers found, creating test layer', 'warning');
+                window.xvgLayerSystem.createLayer('Test Layer');
+            }
+            
+            const activeLayer = window.xvgLayerSystem.getActiveLayer();
+            if (activeLayer) {
+                log(`✅ Active layer: ${activeLayer.name}`, 'success');
+                statusDiv.innerHTML += `<div class="test-result success">✅ Active layer: ${activeLayer.name}</div>`;
+            }
+        }
+        
+        // Test 2: Test Rename Layer
+        function testRenameLayer() {
+            const resultsDiv = document.getElementById('rename-test-results');
+            resultsDiv.innerHTML = '';
+            
+            log('Testing Layer Rename...', 'info');
+            
+            if (!window.xvgLayerSystem) {
+                log('❌ Layer system not available', 'error');
+                resultsDiv.innerHTML += '<div class="test-result error">❌ Layer system not available</div>';
+                return;
+            }
+            
+            const layers = window.xvgLayerSystem.getAllLayers();
+            if (layers.length === 0) {
+                log('❌ No layers available for testing', 'error');
+                resultsDiv.innerHTML += '<div class="test-result error">❌ No layers available for testing</div>';
+                return;
+            }
+            
+            const testLayerIndex = 0;
+            const testLayer = layers[testLayerIndex];
+            const newName = 'Renamed Layer ' + Date.now();
+            
+            try {
+                window.xvgLayerSystem.renameLayer(testLayerIndex, newName);
+                log(`✅ Successfully renamed layer to: ${newName}`, 'success');
+                resultsDiv.innerHTML += `<div class="test-result success">✅ Successfully renamed layer to: ${newName}</div>`;
+            } catch (error) {
+                log(`❌ Rename failed: ${error.message}`, 'error');
+                resultsDiv.innerHTML += `<div class="test-result error">❌ Rename failed: ${error.message}</div>`;
+            }
+        }
+        
+        // Test 3: Test Rename with Null
+        function testRenameWithNull() {
+            const resultsDiv = document.getElementById('rename-test-results');
+            
+            log('Testing Layer Rename with null (simulating prompt cancellation)...', 'info');
+            
+            if (!window.xvgLayerSystem) {
+                log('❌ Layer system not available', 'error');
+                return;
+            }
+            
+            const layers = window.xvgLayerSystem.getAllLayers();
+            if (layers.length === 0) {
+                log('❌ No layers available for testing', 'error');
+                return;
+            }
+            
+            const testLayerIndex = 0;
+            
+            try {
+                window.xvgLayerSystem.renameLayer(testLayerIndex, null);
+                log('✅ Successfully handled null input (prompt cancellation)', 'success');
+                resultsDiv.innerHTML += '<div class="test-result success">✅ Successfully handled null input (prompt cancellation)</div>';
+            } catch (error) {
+                log(`❌ Null handling failed: ${error.message}`, 'error');
+                resultsDiv.innerHTML += `<div class="test-result error">❌ Null handling failed: ${error.message}</div>`;
+            }
+        }
+        
+        // Test 4: Test Rename with Empty String
+        function testRenameWithEmpty() {
+            const resultsDiv = document.getElementById('rename-test-results');
+            
+            log('Testing Layer Rename with empty string...', 'info');
+            
+            if (!window.xvgLayerSystem) {
+                log('❌ Layer system not available', 'error');
+                return;
+            }
+            
+            const layers = window.xvgLayerSystem.getAllLayers();
+            if (layers.length === 0) {
+                log('❌ No layers available for testing', 'error');
+                return;
+            }
+            
+            const testLayerIndex = 0;
+            
+            try {
+                window.xvgLayerSystem.renameLayer(testLayerIndex, '');
+                log('❌ Empty string should have been rejected', 'error');
+                resultsDiv.innerHTML += '<div class="test-result error">❌ Empty string should have been rejected</div>';
+            } catch (error) {
+                log(`✅ Correctly rejected empty string: ${error.message}`, 'success');
+                resultsDiv.innerHTML += `<div class="test-result success">✅ Correctly rejected empty string: ${error.message}</div>`;
+            }
+        }
+        
+        // Test 5: Refresh Layer List
+        function refreshLayerList() {
+            const listDiv = document.getElementById('layer-list');
+            listDiv.innerHTML = '';
+            
+            if (!window.xvgLayerSystem) {
+                listDiv.innerHTML = '<div class="test-result error">❌ Layer system not available</div>';
+                return;
+            }
+            
+            const layers = window.xvgLayerSystem.getAllLayers();
+            const activeLayerIndex = window.xvgLayerSystem.activeLayerIndex;
+            
+            if (layers.length === 0) {
+                listDiv.innerHTML = '<div class="test-result warning">⚠️ No layers found</div>';
+                return;
+            }
+            
+            layers.forEach((layer, index) => {
+                const layerDiv = document.createElement('div');
+                layerDiv.className = `test-result ${index === activeLayerIndex ? 'success' : 'info'}`;
+                layerDiv.innerHTML = `
+                    <strong>${index === activeLayerIndex ? '→ ' : '  '}Layer ${index}:</strong> 
+                    ${layer.name} 
+                    (${layer.visible ? 'visible' : 'hidden'}, ${layer.locked ? 'locked' : 'unlocked'})
+                    <button onclick="testRenameLayer(${index})" style="margin-left: 10px; padding: 2px 5px; font-size: 10px;">Test Rename</button>
+                `;
+                listDiv.appendChild(layerDiv);
+            });
+        }
+        
+        // Auto-run tests when page loads
+        window.addEventListener('load', () => {
+            log('Page loaded, waiting for layer system to initialize...', 'info');
+            setTimeout(() => {
+                checkLayerSystem();
+                refreshLayerList();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

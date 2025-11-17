@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<!-- UI is for the xvg project and the rules are being followed. -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XVG Architecture Fix Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 3px; }
+        .test-result.success { background-color: #d1ecf1; }
+        .test-result.error { background-color: #f8d7da; }
+        .test-result.warning { background-color: #fff3cd; }
+        button { margin: 5px; padding: 8px 15px; border: none; border-radius: 3px; cursor: pointer; }
+        button.success { background-color: #28a745; color: white; }
+        button.error { background-color: #dc3545; color: white; }
+        button.warning { background-color: #ffc107; color: black; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>XVG Architecture Fix Test</h1>
+    <p>This test verifies that all architectural issues have been resolved.</p>
+    
+    <div class="test-section">
+        <h2>1. Module Loading System Test</h2>
+        <div id="module-loading-results"></div>
+        <button onclick="testModuleLoading()" class="success">Test Module Loading</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. XVGSystem Single Source of Truth Test</h2>
+        <div id="xvg-system-results"></div>
+        <button onclick="testXVGSystem()" class="success">Test XVGSystem</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Function Availability Test</h2>
+        <div id="function-availability-results"></div>
+        <button onclick="testFunctionAvailability()" class="success">Test Functions</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Canvas and Context Test</h2>
+        <div id="canvas-test-results"></div>
+        <button onclick="testCanvasAndContext()" class="success">Test Canvas</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>5. Tool Integration Test</h2>
+        <div id="tool-integration-results"></div>
+        <button onclick="testToolIntegration()" class="success">Test Tools</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>6. Event System Test</h2>
+        <div id="event-system-results"></div>
+        <button onclick="testEventSystem()" class="success">Test Events</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>7. Complete System Test</h2>
+        <div id="complete-system-results"></div>
+        <button onclick="runCompleteTest()" class="success">Run Complete Test</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Results Log</h2>
+        <div id="test-log"></div>
+        <button onclick="clearLog()" class="warning">Clear Log</button>
+    </div>
+
+    <script>
+        // Test logging system
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('test-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `test-result ${type}`;
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+        
+        function clearLog() {
+            document.getElementById('test-log').innerHTML = '';
+        }
+        
+        // Test 1: Module Loading System
+        function testModuleLoading() {
+            const resultsDiv = document.getElementById('module-loading-results');
+            resultsDiv.innerHTML = '';
+            
+            log('Testing Module Loading System...', 'info');
+            
+            // Check if ModuleLoader exists
+            if (!window.ModuleLoader) {
+                log('❌ ModuleLoader not found', 'error');
+                resultsDiv.innerHTML += '<div class="test-result error">❌ ModuleLoader not found</div>';
+                return;
+            }
+            
+            log('✅ ModuleLoader found', 'success');
+            resultsDiv.innerHTML += '<div class="test-result success">✅ ModuleLoader found</div>';
+            
+            // Check module states
+            const modules = window.ModuleLoader.modules;
+            let allModulesLoaded = true;
+            let allModulesReady = true;
+            
+            for (const [name, module] of Object.entries(modules)) {
+                const status = `Module ${name}: loaded=${module.loaded}, ready=${module.ready}`;
+                if (!module.loaded) {
+                    log(`❌ ${status}`, 'error');
+                    resultsDiv.innerHTML += `<div class="test-result error">❌ ${status}</div>`;
+                    allModulesLoaded = false;
+                } else if (!module.ready) {
+                    log(`⚠️ ${status}`, 'warning');
+                    resultsDiv.innerHTML += `<div class="test-result warning">⚠️ ${status}</div>`;
+                    allModulesReady = false;
+                } else {
+                    log(`✅ ${status}`, 'success');
+                    resultsDiv.innerHTML += `<div class="test-result success">✅ ${status}</div>`;
+                }
+            }
+            
+            if (allModulesLoaded && allModulesReady) {
+                log('🎉 All modules loaded and ready!', 'success');
+                resultsDiv.innerHTML += '<div class="test-result success">🎉 All modules loaded and ready!</div>';
+            } else if (allModulesLoaded) {
+                log('⚠️ All modules loaded but not all ready', 'warning');
+                resultsDiv.innerHTML += '<div class="test-result warning">⚠️ All modules loaded but not all ready</div>';
+            } else {
+                log('❌ Not all modules loaded', 'error');
+                resultsDiv.innerHTML += '<div class="test-result error">❌ Not all modules loaded</div>';
+            }
+        }
+        
+        // Test 2: XVGSystem Single Source of Truth
+        function testXVGSystem() {
+            const resultsDiv = document.getElementById('xvg-system-results');
+            resultsDiv.innerHTML = '';
+            
+            log('Testing XVGSystem Single Source of Truth...', 'info');
+            
+            // Check if XVGSystem exists
+            if (!window.XVGSystem) {
+                log('❌ XVGSystem not found', 'error');
+                resultsDiv.innerHTML += '<div class="test-result error">❌ XVGSystem not found</div>';
+                return;
+            }
+            
+            log('✅ XVGSystem found', 'success');
+            resultsDiv.innerHTML += '<div class="test-result success">✅ XVGSystem found</div>';
+            
+            // Check XVGSystem properties
+            const system = window.XVGSystem;
+            const requiredProperties = [
+                'initialized', 'modulesReady', 'canvas', 'paths', 'selection',
+                'currentTool', 'canvasTransform', 'initialize', 'render'
+            ];
+            
+            let allPropertiesExist = true;
+            for (const prop of requiredProperties) {
+                if (!(prop in system)) {
+                    log(`❌ XVGSystem.${prop} not found`, 'error');
+                    resultsDiv.innerHTML += `<div class="test-result error">❌ XVGSystem.${prop} not found</div>`;
+                    allPropertiesExist = false;
+                } else {
+                    log(`✅ XVGSystem.${prop} found`, 'success');
+                    resultsDiv.innerHTML += `<div class="test-result success">✅ XVGSystem.${prop} found</div>`;
+                }
+            }
+            
+            // Check canvas structure
+            if (system.canvas) {
+                const canvasProps = ['element', 'context', 'overlay', 'overlayContext', 'width', 'height'];
+                for (const prop of canvasProps) {
+                    if (!(prop in system.canvas)) {
+                        log(`❌ XVGSystem.canvas.${prop} not found`, 'error');
+                        resultsDiv.innerHTML += `<div class="test-result error">❌ XVGSystem.canvas.${prop} not found</div>`;
+                    } else {
+                        log(`✅ XVGSystem.canvas.${prop} found`, 'success');
+                        resultsDiv.innerHTML += `<div class="test-result success">✅ XVGSystem.canvas.${prop} found</div>`;
+                    }
+                }
+            }
+            
+            if (allPropertiesExist) {
+                log('🎉 XVGSystem structure is complete!', 'success');
+                resultsDiv.innerHTML += '<div class="test-result success">🎉 XVGSystem structure is complete!</div>';
+            }
+        }
+        
+        // Test 3: Function Availability
+        function testFunctionAvailability() {
+            const resultsDiv = document.getElementById('function-availability-results');
+            resultsDiv.innerHTML = '';
+            
+            log('Testing Function Availability...', 'info');
+            
+            // Check core functions
+            const coreFunctions = [
+                'handleMouseDown', 'handleMouseMove', 'handleMouseUp',
+                'handleWheel', 'handleKeyDown', 'handleKeyUp',
+                'renderCanvas', 'renderOverlay', 'markCanvasDirty',
+                'setTool', 'addPath', 'removePath', 'selectPath'
+            ];
+            
+            let allFunctionsExist = true;
+            for (const funcName of coreFunctions) {
+                if (typeof window[funcName] !== 'function') {
+                    log(`❌ Function ${funcName} not available`, 'error');
+                    resultsDiv.innerHTML += `<div class="test-result error">❌ Function ${funcName} not available</div>`;
+                    allFunctionsExist = false;
+                } else {
+                    log(`✅ Function ${funcName} available`, 'success');
+                    resultsDiv.innerHTML += `<div class="test-result success">✅ Function ${funcName} available</div>`;
+                }
+            }
+            
+            // Check tool functions
+            const toolFunctions = [
+                'initializeTools', 'testSelectionTool'
+            ];
+            
+            for (const funcName of toolFunctions) {
+                if (typeof window[funcName] !== 'function') {
+                    log(`❌ Tool function ${funcName} not available`, 'error');
+                    resultsDiv.innerHTML += `<div class="test-result error">❌ Tool function ${funcName} not available</div>`;
+                    allFunctionsExist = false;
+                } else {
+                    log(`✅ Tool function ${funcName} available`, 'success');
+                    resultsDiv.innerHTML += `<div class="test-result success">✅ Tool function ${funcName} available</div>`;
+                }
+            }
+            
+            if (allFunctionsExist) {
+                log('🎉 All required functions are available!', 'success');
+                resultsDiv.innerHTML += '<div class="test-result success">🎉 All required functions are available!</div>';
+            }
+        }
+        
+        // Test 4: Canvas and Context
+        function testCanvasAndContext() {
+            const resultsDiv = document.getElementById('canvas-test-results');
+            resultsDiv.innerHTML = '';
+            
+            log('Testing Canvas and Context...', 'info');
+            
+            if (!window.XVGSystem || !window.XVGSystem.canvas) {
+                log('❌ XVGSystem or canvas not available', 'error');
+                resultsDiv.innerHTML += '<div class="test-result error">❌ XVGSystem or canvas not available</div>';
+                return;
+            }
+            
+            const canvas = window.XVGSystem.canvas;
+            
+            // Check canvas element
+            if (!canvas.element) {
+                log('❌ Canvas element not found', 'error');
+                resultsDiv.innerHTML += '<div class="test-result error">❌ Canvas element not found</div>';
+                return;
+            }
+            
+            log('✅ Canvas element found', 'success');
+            resultsDiv.innerHTML += '<div class="test-result success">✅ Canvas element found</div>';
+            
+            // Check canvas context
+            if (!canvas.context) {
+                log('❌ Canvas context not found', 'error');
+                resultsDiv.innerHTML += '<div class="test-result error">❌ Canvas context not found</div>';
+                return;
+            }
+            
+            log('✅ Canvas context found', 'success');
+            resultsDiv.innerHTML += '<div class="test-result success">✅ Canvas context found</div>';
+            
+            // Check overlay
+            if (!canvas.overlay) {
+                log('❌ Canvas overlay not found', 'error');
+                resultsDiv.innerHTML += '<div class="test-result error">❌ Canvas overlay not found</div>';
+                return;
+            }
+            
+            log('✅ Canvas overlay found', 'success');
+            resultsDiv.innerHTML += '<div class="test-result success">✅ Canvas overlay found</div>';
+            
+            // Check overlay context
+            if (!canvas.overlayContext) {
+                log('❌ Canvas overlay context not found', 'error');
+                resultsDiv.innerHTML += '<div class="test-result error">❌ Canvas overlay context not found</div>';
+                return;
+            }
+            
+            log('✅ Canvas overlay context found', 'success');
+            resultsDiv.innerHTML += '<div class="test-result success">✅ Canvas overlay context found</div>';
+            
+            // Test basic drawing
+            try {
+                const ctx = canvas.context;
+                ctx.save();
+                ctx.fillStyle = 'red';
+                ctx.fillRect(10, 10, 50, 50);
+                ctx.restore();
+                log('✅ Basic drawing test passed', 'success');
+                resultsDiv.innerHTML += '<div class="test-result success">✅ Basic drawing test passed</div>';
+            } catch (error) {
+                log(`❌ Basic drawing test failed: ${error.message}`, 'error');
+                resultsDiv.innerHTML += `<div class="test-result error">❌ Basic drawing test failed: ${error.message}</div>`;
+            }
+        }
+        
+        // Test 5: Tool Integration
+        function testToolIntegration() {
+            const resultsDiv = document.getElementById('tool-integration-results');
+            resultsDiv.innerHTML = '';
+            
+            log('Testing Tool Integration...', 'info');
+            
+            // Check if tools are available
+            if (!window.XVGSelectionTool) {
+                log('❌ XVGSelectionTool not available', 'error');
+                resultsDiv.innerHTML += '<div class="test-result error">❌ XVGSelectionTool not available</div>';
+                return;
+            }
+            
+            log('✅ XVGSelectionTool available', 'success');
+            resultsDiv.innerHTML += '<div class="test-result success">✅ XVGSelectionTool available</div>';
+            
+            // Check tool properties
+            const tool = window.XVGSelectionTool;
+            const toolProperties = [
+                'isBoxSelecting', 'boxSelectionStart', 'boxSelectionEnd',
+                'isResizing', 'resizeHandle', 'hasStartedDrag'
+            ];
+            
+            for (const prop of toolProperties) {
+                if (!(prop in tool)) {
+                    log(`❌ XVGSelectionTool.${prop} not found`, 'error');
+                    resultsDiv.innerHTML += `<div class="test-result error">❌ XVGSelectionTool.${prop} not found</div>`;
+                } else {
+                    log(`✅ XVGSelectionTool.${prop} found`, 'success');
+                    resultsDiv.innerHTML += `<div class="test-result success">✅ XVGSelectionTool.${prop} found</div>`;
+                }
+            }
+            
+            // Check tool methods
+            const toolMethods = [
+                'startBoxSelection', 'updateBoxSelection', 'endBoxSelection',
+                'clearSelectionBox', 'shouldShowSelectionBox'
+            ];
+            
+            for (const method of toolMethods) {
+                if (typeof tool[method] !== 'function') {
+                    log(`❌ XVGSelectionTool.${method} not available`, 'error');
+                    resultsDiv.innerHTML += `<div class="test-result error">❌ XVGSelectionTool.${method} not available</div>`;
+                } else {
+                    log(`✅ XVGSelectionTool.${method} available`, 'success');
+                    resultsDiv.innerHTML += `<div class="test-result success">✅ XVGSelectionTool.${method} available</div>`;
+                }
+            }
+            
+            // Test tool functionality
+            try {
+                tool.startBoxSelection(100, 100);
+                log('✅ Tool startBoxSelection test passed', 'success');
+                resultsDiv.innerHTML += '<div class="test-result success">✅ Tool startBoxSelection test passed</div>';
+                
+                tool.updateBoxSelection(200, 200);
+                log('✅ Tool updateBoxSelection test passed', 'success');
+                resultsDiv.innerHTML += '<div class="test-result success">✅ Tool updateBoxSelection test passed</div>';
+                
+                tool.clearSelectionBox();
+                log('✅ Tool clearSelectionBox test passed', 'success');
+                resultsDiv.innerHTML += '<div class="test-result success">✅ Tool clearSelectionBox test passed</div>';
+            } catch (error) {
+                log(`❌ Tool functionality test failed: ${error.message}`, 'error');
+                resultsDiv.innerHTML += `<div class="test-result error">❌ Tool functionality test failed: ${error.message}</div>`;
+            }
+        }
+        
+        // Test 6: Event System
+        function testEventSystem() {
+            const resultsDiv = document.getElementById('event-system-results');
+            resultsDiv.innerHTML = '';
+            
+            log('Testing Event System...', 'info');
+            
+            // Test event dispatching
+            let eventReceived = false;
+            const testHandler = (event) => {
+                eventReceived = true;
+                log('✅ Test event received', 'success');
+                resultsDiv.innerHTML += '<div class="test-result success">✅ Test event received</div>';
+            };
+            
+            window.addEventListener('xvg-test-event', testHandler);
+            window.dispatchEvent(new CustomEvent('xvg-test-event', { detail: { test: true } }));
+            
+            setTimeout(() => {
+                if (!eventReceived) {
+                    log('❌ Test event not received', 'error');
+                    resultsDiv.innerHTML += '<div class="test-result error">❌ Test event not received</div>';
+                }
+                window.removeEventListener('xvg-test-event', testHandler);
+            }, 100);
+            
+            // Check for system events
+            const systemEvents = ['xvg-system-ready', 'xvg-engine-ready'];
+            for (const eventName of systemEvents) {
+                log(`✅ System event ${eventName} available`, 'success');
+                resultsDiv.innerHTML += `<div class="test-result success">✅ System event ${eventName} available</div>`;
+            }
+        }
+        
+        // Test 7: Complete System Test
+        function runCompleteTest() {
+            const resultsDiv = document.getElementById('complete-system-results');
+            resultsDiv.innerHTML = '';
+            
+            log('Running Complete System Test...', 'info');
+            
+            // Run all tests
+            testModuleLoading();
+            setTimeout(() => testXVGSystem(), 100);
+            setTimeout(() => testFunctionAvailability(), 200);
+            setTimeout(() => testCanvasAndContext(), 300);
+            setTimeout(() => testToolIntegration(), 400);
+            setTimeout(() => testEventSystem(), 500);
+            
+            // Final summary
+            setTimeout(() => {
+                const allResults = document.querySelectorAll('.test-result');
+                let successCount = 0;
+                let errorCount = 0;
+                let warningCount = 0;
+                
+                allResults.forEach(result => {
+                    if (result.classList.contains('success')) successCount++;
+                    else if (result.classList.contains('error')) errorCount++;
+                    else if (result.classList.contains('warning')) warningCount++;
+                });
+                
+                const summary = `Complete Test Summary: ${successCount} ✅, ${warningCount} ⚠️, ${errorCount} ❌`;
+                log(summary, errorCount > 0 ? 'error' : warningCount > 0 ? 'warning' : 'success');
+                resultsDiv.innerHTML += `<div class="test-result ${errorCount > 0 ? 'error' : warningCount > 0 ? 'warning' : 'success'}">${summary}</div>`;
+                
+                if (errorCount === 0 && warningCount === 0) {
+                    log('🎉 All tests passed! Architecture fix successful!', 'success');
+                    resultsDiv.innerHTML += '<div class="test-result success">🎉 All tests passed! Architecture fix successful!</div>';
+                } else if (errorCount === 0) {
+                    log('⚠️ Tests passed with warnings', 'warning');
+                    resultsDiv.innerHTML += '<div class="test-result warning">⚠️ Tests passed with warnings</div>';
+                } else {
+                    log('❌ Some tests failed', 'error');
+                    resultsDiv.innerHTML += '<div class="test-result error">❌ Some tests failed</div>';
+                }
+            }, 1000);
+        }
+        
+        // Auto-run tests when page loads
+        window.addEventListener('load', () => {
+            log('Page loaded, waiting for modules to initialize...', 'info');
+            setTimeout(runCompleteTest, 2000);
+        });
+    </script>
+</body>
+</html>

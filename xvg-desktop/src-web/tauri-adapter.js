@@ -1,9 +1,9 @@
 // FILE: src-web/tauri-adapter.js - Tauri Backend Adapter
 // This module adapts the web editor to use Tauri's native backend instead of WASM
 
-import { invoke } from '@tauri-apps/api/tauri';
-import { open, save } from '@tauri-apps/api/dialog';
-import { readBinaryFile, writeBinaryFile } from '@tauri-apps/api/fs';
+import { invoke } from '@tauri-apps/api/core';
+import { open, save } from '@tauri-apps/plugin-dialog';
+import { readFile, writeFile } from '@tauri-apps/plugin-fs';
 
 /**
  * Tauri Adapter
@@ -102,7 +102,7 @@ export class TauriFileOperations {
                 return null;
             }
 
-            const data = await readBinaryFile(filePath);
+            const data = await readFile(filePath);
             console.log('[Tauri] Opened file:', filePath, data.length, 'bytes');
             
             return {
@@ -135,7 +135,7 @@ export class TauriFileOperations {
                 return null;
             }
 
-            await writeBinaryFile(filePath, data);
+            await writeFile(filePath, data);
             console.log('[Tauri] Saved file:', filePath, data.length, 'bytes');
             
             return filePath;

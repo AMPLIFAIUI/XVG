@@ -7,6 +7,7 @@ members = [
     "xvg-ffi",
     "xvg-wasm",
     "xvg-thumbnail-handler",
+    "xvg-desktop/src-tauri",
 ]
 exclude = [
 ]

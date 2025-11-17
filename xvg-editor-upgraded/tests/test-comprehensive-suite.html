@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XVG Editor - Comprehensive Test Suite</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #1a1a1a;
+            color: #ffffff;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .test-header {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .test-controls {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        button {
+            background: #4A9B8F;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #3a8b7f;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .test-summary {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: #333;
+            border-radius: 4px;
+        }
+        
+        .stat .label {
+            font-weight: bold;
+        }
+        
+        .stat .value {
+            font-weight: bold;
+        }
+        
+        .stat .value.success {
+            color: #28a745;
+        }
+        
+        .stat .value.error {
+            color: #dc3545;
+        }
+        
+        .test-results {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .test-result {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #666;
+        }
+        
+        .test-result.passed {
+            border-left-color: #28a745;
+        }
+        
+        .test-result.failed {
+            border-left-color: #dc3545;
+        }
+        
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .test-name {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .test-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .test-status.PASSED {
+            background: #28a745;
+            color: white;
+        }
+        
+        .test-status.FAILED {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .test-duration {
+            color: #888;
+            font-size: 12px;
+        }
+        
+        .test-assertions, .test-errors {
+            margin-top: 15px;
+        }
+        
+        .test-assertions h4, .test-errors h4 {
+            margin: 0 0 10px 0;
+            color: #ccc;
+        }
+        
+        .assertion {
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .assertion.passed {
+            background: rgba(40, 167, 69, 0.2);
+            border-left: 3px solid #28a745;
+        }
+        
+        .assertion.failed {
+            background: rgba(220, 53, 69, 0.2);
+            border-left: 3px solid #dc3545;
+        }
+        
+        .error {
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(220, 53, 69, 0.2);
+            border-left: 3px solid #dc3545;
+            border-radius: 4px;
+        }
+        
+        .error pre {
+            background: #000;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+        
+        .spinner {
+            border: 4px solid #333;
+            border-top: 4px solid #4A9B8F;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🧪 XVG Editor Test Suite</h1>
+            <p>Comprehensive testing framework with proper assertions, isolation, and reporting</p>
+        </div>
+        
+        <div class="test-controls">
+            <button id="run-tests" onclick="runAllTests()">Run All Tests</button>
+            <button id="run-specific" onclick="runSpecificTests()" disabled>Run Specific Tests</button>
+            <button id="clear-results" onclick="clearResults()">Clear Results</button>
+            <span id="test-status">Ready to run tests</span>
+        </div>
+        
+        <div id="test-report">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Click "Run All Tests" to start testing</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load the test framework -->
+    <script src="test-framework.js"></script>
+    
+    <!-- Load XVG modules for testing -->
+    <script src="../pkg/xvg-utilities.js"></script>
+    <script src="../pkg/xvg-tools.js"></script>
+    <script src="../pkg/xvg-core.js"></script>
+    <script src="../pkg/xvg-engine-integration.js"></script>
+
+    <script>
+        // Initialize test framework
+        const testFramework = new XVGTestFramework();
+        
+        // Test 1: Module Loading System
+        testFramework.test('Module Loading System', async function() {
+            // Test if core modules are loaded
+            this.assertNotNull(window.XVGSystem, 'XVGSystem should be available');
+            this.assertNotNull(window.XVGUtils, 'XVGUtils should be available');
+            this.assertNotNull(window.XVGTestFramework, 'XVGTestFramework should be available');
+            
+            // Test if XVGSystem is initialized
+            this.assertNotNull(XVGSystem.appState, 'XVGSystem.appState should be initialized');
+            this.assertNotNull(XVGSystem.canvas, 'XVGSystem.canvas should be initialized');
+            this.assertNotNull(XVGSystem.tools, 'XVGSystem.tools should be initialized');
+        });
+        
+        // Test 2: Canvas System
+        testFramework.test('Canvas System', async function() {
+            // Test canvas element
+            this.assertNotNull(XVGSystem.canvas.element, 'Canvas element should exist');
+            this.assertNotNull(XVGSystem.canvas.context, 'Canvas context should exist');
+            
+            // Test canvas dimensions
+            this.assertTrue(XVGSystem.appState.canvas.width > 0, 'Canvas width should be positive');
+            this.assertTrue(XVGSystem.appState.canvas.height > 0, 'Canvas height should be positive');
+            
+            // Test canvas transform
+            this.assertNotNull(XVGSystem.appState.canvasTransform, 'Canvas transform should exist');
+            this.assertTrue(XVGSystem.appState.canvasTransform.zoom > 0, 'Canvas zoom should be positive');
+        });
+        
+        // Test 3: Tool System
+        testFramework.test('Tool System', async function() {
+            // Test if tools are initialized
+            this.assertNotNull(XVGSystem.tools, 'Tools object should exist');
+            this.assertTrue(XVGSystem.tools.ready, 'Tools should be ready');
+            
+            // Test individual tools
+            const expectedTools = ['selection', 'pen', 'rectangle', 'circle', 'line', 'text', 'eraser'];
+            expectedTools.forEach(toolName => {
+                this.assertNotNull(XVGSystem.tools[toolName], `Tool ${toolName} should exist`);
+            });
+            
+            // Test tool switching
+            const originalTool = XVGSystem.appState.currentTool;
+            this.assertNotNull(originalTool, 'Current tool should be set');
+        });
+        
+        // Test 4: Layer System
+        testFramework.test('Layer System', async function() {
+            // Test layer initialization
+            this.assertNotNull(XVGSystem.appState.layers, 'Layers array should exist');
+            this.assertTrue(Array.isArray(XVGSystem.appState.layers), 'Layers should be an array');
+            this.assertTrue(XVGSystem.appState.layers.length > 0, 'Should have at least one layer');
+            
+            // Test active layer
+            this.assertNotNull(XVGSystem.appState.activeLayer, 'Active layer should be set');
+            this.assertTrue(XVGSystem.appState.activeLayer >= 0, 'Active layer should be non-negative');
+            
+            // Test layer properties
+            const firstLayer = XVGSystem.appState.layers[0];
+            this.assertNotNull(firstLayer.name, 'Layer should have a name');
+            this.assertNotNull(firstLayer.visible, 'Layer should have visibility property');
+            this.assertNotNull(firstLayer.locked, 'Layer should have locked property');
+        });
+        
+        // Test 5: Path System
+        testFramework.test('Path System', async function() {
+            // Test paths array
+            this.assertNotNull(XVGSystem.appState.paths, 'Paths array should exist');
+            this.assertTrue(Array.isArray(XVGSystem.appState.paths), 'Paths should be an array');
+            
+            // Test selected paths
+            this.assertNotNull(XVGSystem.appState.selectedPaths, 'Selected paths array should exist');
+            this.assertTrue(Array.isArray(XVGSystem.appState.selectedPaths), 'Selected paths should be an array');
+        });
+        
+        // Test 6: Utility Functions
+        testFramework.test('Utility Functions', async function() {
+            // Test XVGUtils availability
+            this.assertNotNull(window.XVGUtils, 'XVGUtils should be available');
+            
+            // Test utility functions
+            this.assertNotNull(window.XVGUtils.clamp, 'clamp function should exist');
+            this.assertNotNull(window.XVGUtils.dpi, 'dpi function should exist');
+            this.assertNotNull(window.XVGUtils.transform, 'transform function should exist');
+            this.assertNotNull(window.XVGUtils.toWorld, 'toWorld function should exist');
+            this.assertNotNull(window.XVGUtils.toScreen, 'toScreen function should exist');
+            
+            // Test clamp function
+            this.assertEqual(window.XVGUtils.clamp(5, 0, 10), 5, 'clamp should work correctly');
+            this.assertEqual(window.XVGUtils.clamp(-5, 0, 10), 0, 'clamp should handle min boundary');
+            this.assertEqual(window.XVGUtils.clamp(15, 0, 10), 10, 'clamp should handle max boundary');
+        });
+        
+        // Test 7: Global Functions
+        testFramework.test('Global Functions', async function() {
+            // Test essential global functions
+            const requiredFunctions = [
+                'setTool', 'newFile', 'openFile', 'saveFile', 'exportXVG', 'importFile',
+                'undo', 'redo', 'cut', 'copy', 'paste', 'deleteSelected',
+                'selectAll', 'deselectAll', 'zoomIn', 'zoomOut', 'fitToView', 'actualSize',
+                'toggleGrid', 'toggleRulers', 'toggleGuides', 'help', 'about'
+            ];
+            
+            requiredFunctions.forEach(funcName => {
+                this.assertNotNull(window[funcName], `Global function ${funcName} should exist`);
+                this.assertTrue(typeof window[funcName] === 'function', `${funcName} should be a function`);
+            });
+        });
+        
+        // Test 8: Engine Integration
+        testFramework.test('Engine Integration', async function() {
+            // Test if engine integration is available
+            this.assertNotNull(window.XVGEngineIntegration, 'XVGEngineIntegration should be available');
+            
+            // Test engine status indicators
+            this.assertNotNull(window.XVGEngineIntegration.prototype.initializeEngineStatusIndicators, 
+                'Engine status indicators should be available');
+            
+            // Test engine configuration UI
+            this.assertNotNull(window.XVGEngineIntegration.prototype.initializeEngineConfigurationUI, 
+                'Engine configuration UI should be available');
+        });
+        
+        // Test 9: WASM Integration
+        testFramework.test('WASM Integration', async function() {
+            // Test WASM availability (may not be available in all environments)
+            if (window.xvg_wasm) {
+                this.assertNotNull(window.xvg_wasm.XVGFile, 'XVGFile class should be available');
+                
+                // Test WASM file creation
+                this.assertDoesNotThrow(() => {
+                    const testFile = new window.xvg_wasm.XVGFile(100, 100);
+                    testFile.free();
+                }, 'Should be able to create and free XVGFile');
+            } else {
+                console.log('WASM not available - skipping WASM tests');
+            }
+        });
+        
+        // Test 10: Error Handling
+        testFramework.test('Error Handling', async function() {
+            // Test notification system
+            this.assertNotNull(window.notify, 'Notification system should be available');
+            this.assertTrue(typeof window.notify === 'function', 'notify should be a function');
+            
+            // Test error handling in utility functions
+            this.assertDoesNotThrow(() => {
+                window.XVGUtils.clamp(null, 0, 10);
+            }, 'clamp should handle null input gracefully');
+            
+            // Test error handling in global functions
+            this.assertDoesNotThrow(() => {
+                window.setTool('nonexistent');
+            }, 'setTool should handle invalid tool names gracefully');
+        });
+        
+        // Test 11: Performance
+        testFramework.test('Performance', async function() {
+            // Test performance monitoring
+            this.assertNotNull(window.getPerformanceMetrics, 'Performance metrics should be available');
+            this.assertTrue(typeof window.getPerformanceMetrics === 'function', 'getPerformanceMetrics should be a function');
+            
+            // Test performance metrics
+            const metrics = window.getPerformanceMetrics();
+            this.assertNotNull(metrics, 'Performance metrics should return an object');
+            this.assertNotNull(metrics.renderTime, 'Performance metrics should include render time');
+            this.assertNotNull(metrics.memoryUsage, 'Performance metrics should include memory usage');
+        });
+        
+        // Test 12: Debug Functions
+        testFramework.test('Debug Functions', async function() {
+            // Test debug functions
+            const debugFunctions = [
+                'testXVGWasm', 'debugEngineStatus', 'testEngineConnections',
+                'addTestShapes', 'add3DDemo', 'validateXVG', 'showXVGInfo'
+            ];
+            
+            debugFunctions.forEach(funcName => {
+                this.assertNotNull(window[funcName], `Debug function ${funcName} should exist`);
+                this.assertTrue(typeof window[funcName] === 'function', `${funcName} should be a function`);
+            });
+        });
+        
+        // Test runner functions
+        async function runAllTests() {
+            const runButton = document.getElementById('run-tests');
+            const statusSpan = document.getElementById('test-status');
+            
+            runButton.disabled = true;
+            statusSpan.textContent = 'Running tests...';
+            
+            try {
+                await testFramework.runAll();
+                statusSpan.textContent = 'Tests completed';
+            } catch (error) {
+                statusSpan.textContent = 'Tests failed: ' + error.message;
+                console.error('Test runner error:', error);
+            } finally {
+                runButton.disabled = false;
+            }
+        }
+        
+        function runSpecificTests() {
+            // TODO: Implement specific test selection
+            console.log('Specific test selection not implemented yet');
+        }
+        
+        function clearResults() {
+            document.getElementById('test-report').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Click "Run All Tests" to start testing</p>
+                </div>
+            `;
+            document.getElementById('test-status').textContent = 'Ready to run tests';
+        }
+        
+        // Auto-run tests on page load (optional)
+        // window.addEventListener('load', () => {
+        //     setTimeout(runAllTests, 1000);
+        // });
+    </script>
+</body>
+</html>

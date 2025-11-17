@@ -58,10 +58,10 @@ echo Creating thumbnail handler registry entries...
 
 REM Register as thumbnail provider
 reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\KindMap" /v ".xvg" /t REG_SZ /d "picture" /f
-reg add "HKEY_CLASSES_ROOT\.xvg\ShellEx\{e357fccd-a995-4576-b01f-234630154e96}" /ve /d "{XVG-THUMBNAIL-HANDLER-GUID}" /f
+reg add "HKEY_CLASSES_ROOT\.xvg\ShellEx\{e357fccd-a995-4576-b01f-234630154e96}" /ve /d "{4A625AD4-C8C3-4D98-B193-42AD7A51E3B9}" /f
 
 REM Register as preview handler
-reg add "HKEY_CLASSES_ROOT\.xvg\ShellEx\{8895b1c6-b41f-4c1c-a562-0d564250836f}" /ve /d "{XVG-PREVIEW-HANDLER-GUID}" /f
+reg add "HKEY_CLASSES_ROOT\.xvg\ShellEx\{8895b1c6-b41f-4c1c-a562-0d564250836f}" /ve /d "{A0E75ABD-4DC6-4AD3-980C-0138C37A25E2}" /f
 
 REM Enable thumbnails in Explorer
 reg add "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ShowThumbnails" /t REG_DWORD /d 1 /f
