@@ -128,21 +128,7 @@
                         <button class="menu-option" onclick="toggleGuides(); closeAllMenus()">Toggle Guides</button>
                     </div>
                 </div>
-                <div class="menu-dropdown">
-                    <button class="menu-item" onclick="toggleMenu('tools-menu')">Tools</button>
-                    <div class="menu-content" id="tools-menu">
 
-                        <button class="menu-option" onclick="setTool('select'); closeAllMenus()">Select Tool</button>
-                        <button class="menu-option" onclick="setTool('pen'); closeAllMenus()">Pen Tool</button>
-                        <button class="menu-option" onclick="setTool('rectangle'); closeAllMenus()">Rectangle Tool</button>
-                        <button class="menu-option" onclick="setTool('circle'); closeAllMenus()">Circle Tool</button>
-                        <button class="menu-option" onclick="setTool('line'); closeAllMenus()">Line Tool</button>
-                        <button class="menu-option" onclick="setTool('text'); closeAllMenus()">Text Tool</button>
-                        <button class="menu-option" onclick="setTool('pan'); closeAllMenus()">Pan Tool</button>
-                        <button class="menu-option" onclick="setTool('eyedropper'); closeAllMenus()">Eyedropper Tool</button>
-                        <button class="menu-option" onclick="setTool('eraser'); closeAllMenus()">Eraser Tool</button>
-                    </div>
-                </div>
                 <div class="menu-dropdown">
                     <button class="menu-item" onclick="toggleMenu('xvg-menu')">XVG</button>
                     <div class="menu-content" id="xvg-menu">
@@ -176,69 +162,24 @@
         </div>
         <!-- TOOLBAR -->
         <div class="toolbar">
-            <!-- DRAWING TOOLS -->
+            <!-- EDIT ACTIONS -->
             <div class="toolbar-group">
-                <button class="toolbar-btn active" id="select-tool" onclick="setTool('select')" title="Select Tool (V)">
-                    <img src="assets/icons/white/icons8-cursor-100.png" alt="Select" class="tool-icon">
-                </button>
-                <button class="toolbar-btn" id="pen-tool" onclick="setTool('pen')" title="Pen Tool (P)">
-                    <img src="assets/icons/white/icons8-ball-point-pen-100.png" alt="Pen" class="tool-icon">
-                </button>
-                <button class="toolbar-btn" id="brush-tool" onclick="setTool('brush')" title="Brush Tool (B)">
-                    <img src="assets/icons/white/icons8-paint-100.png" alt="Brush" class="tool-icon">
-                </button>
-                <button class="toolbar-btn" id="rectangle-tool" onclick="setTool('rectangle')" title="Rectangle Tool (M)">
-                    <img src="assets/icons/white/icons8-rectangle-100.png" alt="Rectangle" class="tool-icon">
-                </button>
-                <button class="toolbar-btn" id="circle-tool" onclick="setTool('circle')" title="Circle Tool (O)">
-                    <img src="assets/icons/white/icons8-circled-thin-100.png" alt="Circle" class="tool-icon">
-                </button>
-                <button class="toolbar-btn" id="polygon-tool" onclick="setTool('polygon')" title="Polygon Tool (G)">
-                    <img src="assets/icons/white/icons8-hexagon-100.png" alt="Polygon" class="tool-icon">
-                </button>
-                <button class="toolbar-btn" id="triangle-tool" onclick="setTool('triangle')" title="Triangle Tool (Y)">
-                    <img src="assets/icons/white/icons8-triangle-100.png" alt="Triangle" class="tool-icon">
-                </button>
-                <button class="toolbar-btn" id="line-tool" onclick="setTool('line')" title="Line Tool (L)">
-                    <img src="assets/icons/white/icons8-line-100.png" alt="Line" class="tool-icon">
-                </button>
-                <button class="toolbar-btn" id="text-tool" onclick="setTool('text')" title="Text Tool (T)">
-                    <img src="assets/icons/white/icons8-text-100.png" alt="Text" class="tool-icon">
-                </button>
-                <button class="toolbar-btn" id="eraser-tool" onclick="setTool('eraser')" title="Eraser Tool (E)">
-                    <img src="assets/icons/white/icons8-eraser-tool-100.png" alt="Eraser" class="tool-icon">
-                </button>
-                <div class="eraser-size-control" id="eraser-size-control" style="display: none;">
-                    <input type="range" id="eraser-radius-slider" min="1" max="100" value="20" 
-                           oninput="setEraserRadius(parseInt(this.value))" 
-                           title="Eraser Size">
-                    <span id="eraser-radius-value">20px</span>
-                </div>
-            </div>
-
-            <div class="toolbar-divider"></div>
-
-            <!-- NAVIGATION TOOLS -->
-            <div class="toolbar-group">
-                <button class="toolbar-btn" id="pan-tool" onclick="setTool('pan')" title="Pan Tool (H)">
-                    <img src="assets/icons/white/icons8-hand-pan-100.png" alt="Pan" class="tool-icon">
-                </button>
-                <button class="toolbar-btn" id="eyedropper-tool" onclick="setTool('eyedropper')" title="Eyedropper Tool (I)">
-                    <img src="assets/icons/white/icons8-color-dropper-100.png" alt="Eyedropper" class="tool-icon">
-                    <div class="eyedropper-color-preview" id="eyedropper-color-preview"></div>
-                </button>
-                <button class="toolbar-btn" id="cut-tool" onclick="setTool('cut')" title="Cut Tool (X)">
-                    <img src="assets/icons/white/icons8-cut-100.png" alt="Cut" class="tool-icon">
-                </button>
                 <button class="toolbar-btn" onclick="undo()" title="Undo (Ctrl+Z)">
                     <img src="assets/icons/white/icons8-undo-100.png" alt="Undo" class="tool-icon">
                 </button>
                 <button class="toolbar-btn" onclick="redo()" title="Redo (Ctrl+Y)">
                     <img src="assets/icons/white/icons8-redo-100.png" alt="Redo" class="tool-icon">
                 </button>
+            </div>
+            
+            <div class="toolbar-divider"></div>
+            
+            <!-- UTILITIES -->
+            <div class="toolbar-group">
                 <button class="toolbar-btn" id="bgremover-tool" onclick="setTool('bgremover')" title="Background Remover (R)">
                     <img src="assets/icons/white/icons8-magic-100.png" alt="Background Remover" class="tool-icon">
-                </button>            </div>
+                </button>
+            </div>
 
             <div class="toolbar-divider"></div>
         

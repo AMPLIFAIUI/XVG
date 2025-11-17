@@ -8,6 +8,8 @@ import init, { XVGRuntime } from '../modules/xvg_wasm.js';
 import { XVGCore } from '../pkg/xvg-core.js'; // Import the new XVGCore class
 // import { XVGRuntime } from '../modules/xvg_wasm.js'; // Now imported directly from init
 import { initializeTools } from '../pkg/xvg-tools.js'; // Import the tool initializer
+import { initializeFileOperations } from '../pkg/xvg-file-operations.js'; // Import file operations
+import { initializeCollaboration } from '../pkg/xvg-collaboration.js'; // Import collaboration
 // import { EngineIntegration } from '../pkg/xvg-engine-integration.js'; // Import the refactored class
 
 // The WASM module is the first thing that must be loaded and initialized.
@@ -28,7 +30,9 @@ async function startXVGEditor() {
         window.XVGSystem = new XVGCore(); // Instantiate the core and expose it globally for remaining unrefactored code
         window.XVGSystem.initializeCanvas(); // Call the core initialization function on the instance
         window.Engine = new EngineIntegration(); // Instantiate and expose the new EngineIntegration class globally for the remaining unrefactored code.
-        initializeTools(window.XVGSystem); // Initialize tools with the core instance 
+        initializeTools(window.XVGSystem); // Initialize tools with the core instance
+        initializeFileOperations(); // Initialize file operations (save/load)
+        initializeCollaboration(); // Initialize collaboration (CRDT) 
         
         console.log("🚀 XVG Editor is now running with WASM-based core engines.");
 
