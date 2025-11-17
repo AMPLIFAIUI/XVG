@@ -4,6 +4,8 @@
   "description": "XVG (eXtended Vector Graphics) Editor - WebAssembly Frontend",
   "main": "index.html",
   "scripts": {
+    "build:wasm": "cd ../xvg-wasm && wasm-pack build --target web --out-dir ../xvg-editor/modules --out-name xvg_wasm",
+    "prebuild": "npm run build:wasm",
     "start": "http-server . -c-1",
     "build": "webpack --mode production",
     "dev": "webpack --mode development",
