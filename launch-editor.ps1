@@ -37,7 +37,12 @@ Write-Host "Press Ctrl+C to stop the server and kill processes on port $Port" -F
 
 # Move to editor directory (relative to this script)
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$editorDir = Join-Path $scriptDir "xvg editor"
+$editorDir = Join-Path $scriptDir "xvg-editor"
+
+if (!(Test-Path $editorDir)) {
+    throw "Editor directory not found at $editorDir. Please verify the path."
+}
+
 Set-Location $editorDir
 
 # Kill any process using the port
@@ -48,22 +53,17 @@ try { node -v | Out-Null } catch { throw "Node.js is required but not found in P
 
 # Start server with port env var
 $env:PORT = $Port
-Write-Host "Launching server (node pkg/server.js) on http://localhost:$Port" -ForegroundColor Green
+$url = "http://localhost:$Port"
+Write-Host "Launching server (node pkg/server.js) on $url" -ForegroundColor Green
+
+$serverProcess = $null
 
 try {
-    # Start the server in background
-    $serverJob = Start-Job -ScriptBlock {
-        param($port, $editorDir)
-        Set-Location $editorDir
-        $env:PORT = $port
-        node pkg/server.js
-    } -ArgumentList $Port, $editorDir
+    $serverProcess = Start-Process "node" -ArgumentList "pkg/server.js" -WorkingDirectory $editorDir -PassThru -NoNewWindow
 
     # Wait a moment for server to start
     Start-Sleep -Seconds 2
 
-    # Open default browser
-    $url = "http://localhost:$Port"
     Write-Host "Opening default browser at $url..." -ForegroundColor Green
     try {
         Start-Process $url
@@ -71,27 +71,30 @@ try {
         Write-Host "Warning: Could not launch browser automatically. Please open $url manually." -ForegroundColor Yellow
     }
 
-    # Wait for server job to complete (keep script running)
-    Write-Host "Server is running. Press Ctrl+C to stop and cleanup..." -ForegroundColor Gray
-    Wait-Job $serverJob | Out-Null
+    Write-Host "Server is running (PID $($serverProcess.Id)). Press Ctrl+C to stop..." -ForegroundColor Gray
+    Wait-Process -Id $serverProcess.Id
 
 } catch [System.Management.Automation.PipelineStoppedException] {
-    # Handle Ctrl+C gracefully
     Write-Host "`nReceived Ctrl+C, shutting down server..." -ForegroundColor Yellow
 } catch {
-    # Handle other exceptions
     Write-Host "`nError occurred: $($_.Exception.Message)" -ForegroundColor Red
 } finally {
-    # Always cleanup: kill any remaining processes on the port
     Write-Host "Performing cleanup..." -ForegroundColor Cyan
-    Kill-PortProcess -PortNumber $Port
 
-    # Also stop the background job if it exists
-    if ($serverJob -and (Get-Job -Id $serverJob.Id -ErrorAction SilentlyContinue)) {
-        Write-Host "Stopping server job..." -ForegroundColor Gray
-        Stop-Job $serverJob -ErrorAction SilentlyContinue
-        Remove-Job $serverJob -ErrorAction SilentlyContinue
+    if ($serverProcess -and (-not $serverProcess.HasExited)) {
+        Write-Host "Stopping server process PID $($serverProcess.Id)..." -ForegroundColor Gray
+        try {
+            $serverProcess.CloseMainWindow() | Out-Null
+            Start-Sleep -Milliseconds 500
+            if (-not $serverProcess.HasExited) {
+                $serverProcess.Kill()
+            }
+            $serverProcess.WaitForExit()
+        } catch {
+            Write-Host "Warning: Failed to stop server process directly, killing port instead." -ForegroundColor Yellow
+        }
     }
 
+    Kill-PortProcess -PortNumber $Port
     Write-Host "Cleanup complete. Goodbye!" -ForegroundColor Green
 }
