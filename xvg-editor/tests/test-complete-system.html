@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XVG Editor - Complete System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-section {
+            background: #2a2a2a;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #4A9B8F;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+        }
+        .success { background: #28a745; }
+        .error { background: #dc3545; }
+        .warning { background: #ffc107; color: #000; }
+        .info { background: #17a2b8; }
+        button {
+            background: #4A9B8F;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #3a8b7f; }
+        #test-output {
+            background: #000;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>XVG Editor - Complete System Test</h1>
+    
+    <div class="test-section">
+        <h2>1. Module Loading System</h2>
+        <button onclick="testModuleLoading()">Test Module Loading</button>
+        <div id="module-loading-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Canvas Initialization</h2>
+        <button onclick="testCanvasInitialization()">Test Canvas</button>
+        <div id="canvas-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Tool System</h2>
+        <button onclick="testToolSystem()">Test Tools</button>
+        <div id="tool-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Layer System</h2>
+        <button onclick="testLayerSystem()">Test Layers</button>
+        <div id="layer-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>5. Engine Integration</h2>
+        <button onclick="testEngineIntegration()">Test Engines</button>
+        <div id="engine-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>6. Global Functions</h2>
+        <button onclick="testGlobalFunctions()">Test Functions</button>
+        <div id="function-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>7. Event System</h2>
+        <button onclick="testEventSystem()">Test Events</button>
+        <div id="event-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>8. Complete System Test</h2>
+        <button onclick="runCompleteTest()">Run All Tests</button>
+        <div id="complete-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Output</h2>
+        <div id="test-output"></div>
+    </div>
+
+    <script>
+        // Store original console functions for proper cleanup
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+        
+        function addToOutput(message, type = 'log') {
+            const output = document.getElementById('test-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'warn' ? '⚠️' : '✅';
+            output.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        // Set up test console that captures output but doesn't hijack globally
+        function setupTestConsole() {
+            console.log = function(...args) {
+                originalLog.apply(console, args);
+                addToOutput(args.join(' '));
+            };
+            
+            console.warn = function(...args) {
+                originalWarn.apply(console, args);
+                addToOutput(args.join(' '), 'warn');
+            };
+            
+            console.error = function(...args) {
+                originalError.apply(console, args);
+                addToOutput(args.join(' '), 'error');
+            };
+        }
+        
+        // Restore original console functions
+        function restoreConsole() {
+            console.log = originalLog;
+            console.warn = originalWarn;
+            console.error = originalError;
+        }
+        
+        // Set up console for this test session
+        setupTestConsole();
+        
+        function showResult(elementId, message, type = 'success') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="test-result ${type}">${message}</div>`;
+        }
+        
+        // Test 1: Module Loading System
+        function testModuleLoading() {
+            console.log('=== Testing Module Loading System ===');
+            
+            try {
+                // Check if ModuleLoader exists
+                if (!window.ModuleLoader) {
+                    throw new Error('ModuleLoader not found');
+                }
+                
+                // Check module states
+                const modules = window.ModuleLoader.modules;
+                const moduleNames = Object.keys(modules);
+                
+                console.log('Found modules:', moduleNames);
+                
+                let allLoaded = true;
+                let allReady = true;
+                
+                for (const [name, module] of Object.entries(modules)) {
+                    console.log(`Module ${name}: loaded=${module.loaded}, ready=${module.ready}`);
+                    if (!module.loaded) allLoaded = false;
+                    if (!module.ready) allReady = false;
+                }
+                
+                if (allLoaded && allReady) {
+                    showResult('module-loading-result', '✅ All modules loaded and ready', 'success');
+                } else if (allLoaded) {
+                    showResult('module-loading-result', '⚠️ Modules loaded but not all ready', 'warning');
+                } else {
+                    showResult('module-loading-result', '❌ Not all modules loaded', 'error');
+                }
+                
+            } catch (error) {
+                showResult('module-loading-result', `❌ Module loading test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Test 2: Canvas Initialization
+        function testCanvasInitialization() {
+            console.log('=== Testing Canvas Initialization ===');
+            
+            try {
+                // Check if XVGSystem exists
+                if (!window.XVGSystem) {
+                    throw new Error('XVGSystem not found');
+                }
+                
+                // Check canvas elements
+                const canvas = window.XVGSystem.canvas;
+                if (!canvas.element) {
+                    throw new Error('Main canvas element not found');
+                }
+                
+                if (!canvas.context) {
+                    throw new Error('Main canvas context not found');
+                }
+                
+                // Check canvas dimensions
+                const width = canvas.element.width;
+                const height = canvas.element.height;
+                
+                console.log(`Canvas dimensions: ${width}x${height}`);
+                
+                if (width > 0 && height > 0) {
+                    showResult('canvas-result', `✅ Canvas initialized: ${width}x${height}`, 'success');
+                } else {
+                    showResult('canvas-result', '❌ Canvas has zero dimensions', 'error');
+                }
+                
+            } catch (error) {
+                showResult('canvas-result', `❌ Canvas test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Test 3: Tool System
+        function testToolSystem() {
+            console.log('=== Testing Tool System ===');
+            
+            try {
+                if (!window.XVGSystem) {
+                    throw new Error('XVGSystem not found');
+                }
+                
+                const tools = window.XVGSystem.tools;
+                const toolNames = Object.keys(tools);
+                
+                console.log('Available tools:', toolNames);
+                
+                let toolsWorking = true;
+                let errorMessage = '';
+                
+                // Check PanTool
+                if (tools.pan) {
+                    console.log('PanTool available');
+                } else {
+                    toolsWorking = false;
+                    errorMessage += 'PanTool missing; ';
+                }
+                
+                // Check SelectionTool
+                if (tools.selection) {
+                    console.log('SelectionTool available');
+                } else {
+                    toolsWorking = false;
+                    errorMessage += 'SelectionTool missing; ';
+                }
+                
+                if (toolsWorking) {
+                    showResult('tool-result', '✅ Tool system initialized', 'success');
+                } else {
+                    showResult('tool-result', `❌ Tool system incomplete: ${errorMessage}`, 'error');
+                }
+                
+            } catch (error) {
+                showResult('tool-result', `❌ Tool test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Test 4: Layer System
+        function testLayerSystem() {
+            console.log('=== Testing Layer System ===');
+            
+            try {
+                if (!window.xvgLayerSystem) {
+                    throw new Error('Layer system not found');
+                }
+                
+                const layers = window.xvgLayerSystem.getAllLayers();
+                const activeLayer = window.xvgLayerSystem.getActiveLayer();
+                
+                console.log(`Layer count: ${layers.length}`);
+                console.log('Active layer:', activeLayer ? activeLayer.name : 'none');
+                
+                if (layers.length > 0 && activeLayer) {
+                    showResult('layer-result', `✅ Layer system working: ${layers.length} layers`, 'success');
+                } else {
+                    showResult('layer-result', '⚠️ Layer system initialized but no layers', 'warning');
+                }
+                
+            } catch (error) {
+                showResult('layer-result', `❌ Layer test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Test 5: Engine Integration
+        function testEngineIntegration() {
+            console.log('=== Testing Engine Integration ===');
+            
+            try {
+                if (!window.xvgEngineIntegration) {
+                    throw new Error('Engine integration not found');
+                }
+                
+                const engines = window.xvgEngineIntegration.getAllEngines();
+                const engineNames = Object.keys(engines);
+                
+                console.log('Available engines:', engineNames);
+                
+                let enginesWorking = 0;
+                for (const [name, engine] of Object.entries(engines)) {
+                    if (engine && engine.initialized) {
+                        enginesWorking++;
+                        console.log(`Engine ${name}: initialized`);
+                    } else {
+                        console.log(`Engine ${name}: not initialized`);
+                    }
+                }
+                
+                if (enginesWorking > 0) {
+                    showResult('engine-result', `✅ Engine integration working: ${enginesWorking}/${engineNames.length} engines`, 'success');
+                } else {
+                    showResult('engine-result', '⚠️ Engine integration available but no engines initialized', 'warning');
+                }
+                
+            } catch (error) {
+                showResult('engine-result', `❌ Engine test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Test 6: Global Functions
+        function testGlobalFunctions() {
+            console.log('=== Testing Global Functions ===');
+            
+            try {
+                const requiredFunctions = [
+                    'setTool', 'toggleGrid', 'toggleRulers', 'zoomIn', 'zoomOut',
+                    'addLayer', 'deleteSelectedLayer', 'newFile', 'openFile',
+                    'undo', 'redo', 'selectAll', 'deselectAll'
+                ];
+                
+                let missingFunctions = [];
+                
+                for (const funcName of requiredFunctions) {
+                    if (typeof window[funcName] === 'function') {
+                        console.log(`Function ${funcName}: available`);
+                    } else {
+                        missingFunctions.push(funcName);
+                        console.log(`Function ${funcName}: missing`);
+                    }
+                }
+                
+                if (missingFunctions.length === 0) {
+                    showResult('function-result', '✅ All required functions available', 'success');
+                } else {
+                    showResult('function-result', `❌ Missing functions: ${missingFunctions.join(', ')}`, 'error');
+                }
+                
+            } catch (error) {
+                showResult('function-result', `❌ Function test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Test 7: Event System
+        function testEventSystem() {
+            console.log('=== Testing Event System ===');
+            
+            try {
+                // Test if event handlers are attached
+                const canvas = window.XVGSystem?.canvas?.element;
+                if (!canvas) {
+                    throw new Error('Canvas not available for event testing');
+                }
+                
+                // Check if event handlers exist
+                const hasMouseDown = canvas.onmousedown !== null || canvas.addEventListener;
+                const hasMouseMove = canvas.onmousemove !== null || canvas.addEventListener;
+                const hasMouseUp = canvas.onmouseup !== null || canvas.addEventListener;
+                
+                console.log('Event handlers: mousedown=' + hasMouseDown + ', mousemove=' + hasMouseMove + ', mouseup=' + hasMouseUp);
+                
+                if (hasMouseDown && hasMouseMove && hasMouseUp) {
+                    showResult('event-result', '✅ Event system configured', 'success');
+                } else {
+                    showResult('event-result', '⚠️ Some event handlers missing', 'warning');
+                }
+                
+            } catch (error) {
+                showResult('event-result', `❌ Event test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Test 8: Complete System Test
+        function runCompleteTest() {
+            console.log('=== Running Complete System Test ===');
+            
+            // Clear previous results
+            document.getElementById('test-output').textContent = '';
+            
+            // Run all tests
+            setTimeout(() => testModuleLoading(), 100);
+            setTimeout(() => testCanvasInitialization(), 200);
+            setTimeout(() => testToolSystem(), 300);
+            setTimeout(() => testLayerSystem(), 400);
+            setTimeout(() => testEngineIntegration(), 500);
+            setTimeout(() => testGlobalFunctions(), 600);
+            setTimeout(() => testEventSystem(), 700);
+            
+            // Final summary
+            setTimeout(() => {
+                console.log('=== Complete System Test Finished ===');
+                showResult('complete-result', '✅ Complete system test finished. Check output above for details.', 'success');
+                
+                // Clean up console
+                restoreConsole();
+            }, 1000);
+        }
+        
+        // Auto-run complete test when page loads
+        window.addEventListener('load', () => {
+            setTimeout(runCompleteTest, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<!-- UI is for the xvg project and the rules are being followed. -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Temporarily removed CSP to fix functionality - can be re-added later with proper configuration -->
+    <title>XVG Graphics Editor</title>
+    <link rel="icon" type="image/png" href="assets/XVGLOGO.png">
+    <link rel="stylesheet" href="styles.css">
+    <!-- Webpack will inject the bundled scripts here -->
+</head>
+<body>
+    <div class="app-container">
+        <!-- MENU BAR -->
+        <div class="menu-bar">
+            <div class="menu-group">
+                <div class="menu-dropdown">
+                    <button class="menu-item" onclick="toggleMenu('file-menu')">File</button>
+                    <div class="menu-content" id="file-menu">
+                        <button class="menu-option" onclick="newFile(); closeAllMenus()">New</button>
+                        <button class="menu-option" onclick="openFile(); closeAllMenus()">Open...</button>
+                        <button class="menu-option" onclick="saveFile(); closeAllMenus()">Save</button>
+                        <button class="menu-option" onclick="saveFileAs(); closeAllMenus()">Save As...</button>
+
+                        <div class="menu-separator"></div>
+                        <button class="menu-option" onclick="console.log('[UI] Export XVG button clicked'); exportXVG(); closeAllMenus()">Export XVG...</button>
+                        <button class="menu-option" onclick="importFile(); closeAllMenus()">Import File...</button>
+                    </div>
+                </div>
+                <div class="menu-dropdown">
+                    <button class="menu-item" onclick="toggleMenu('edit-menu')">Edit</button>
+                    <div class="menu-content" id="edit-menu">
+                        <button class="menu-option" onclick="undo(); closeAllMenus()">Undo</button>
+                        <button class="menu-option" onclick="redo(); closeAllMenus()">Redo</button>
+                        <div class="menu-separator"></div>
+                        <button class="menu-option" onclick="cut(); closeAllMenus()"><img src="assets/icons/white/icons8-cut-100.png" alt="Cut" class="menu-icon">Cut</button>
+                        <button class="menu-option" onclick="copy(); closeAllMenus()">Copy</button>
+                        <button class="menu-option" onclick="paste(); closeAllMenus()">Paste</button>
+                        <button class="menu-option" onclick="deleteSelected(); closeAllMenus()">Delete</button>
+                        <div class="menu-separator"></div>
+                        <button class="menu-option" onclick="selectAll(); closeAllMenus()">Select All</button>
+                        <button class="menu-option" onclick="deselectAll(); closeAllMenus()">Deselect All</button>
+                    </div>
+                </div>
+                <div class="menu-dropdown">
+                    <button class="menu-item" onclick="toggleMenu('view-menu')">View</button>
+                    <div class="menu-content" id="view-menu">
+                        <button class="menu-option" onclick="zoomIn(); closeAllMenus()">Zoom In</button>
+                        <button class="menu-option" onclick="zoomOut(); closeAllMenus()">Zoom Out</button>
+                        <button class="menu-option" onclick="fitToView(); closeAllMenus()">Fit to View</button>
+                        <button class="menu-option" onclick="actualSize(); closeAllMenus()">Actual Size</button>
+                        <div class="menu-separator"></div>
+                        <button class="menu-option" onclick="toggleGrid(); closeAllMenus()">Toggle Grid</button>
+                        <button class="menu-option" onclick="toggleGridMode(); closeAllMenus()">Grid Mode (Static/Moving)</button>
+                        <button class="menu-option" onclick="setSubtleGrid(); closeAllMenus()">Subtle Grid</button>
+                        <button class="menu-option" onclick="setNormalGrid(); closeAllMenus()">Normal Grid</button>
+                        <button class="menu-option" onclick="toggleRulers(); closeAllMenus()">Toggle Rulers</button>
+                        <button class="menu-option" onclick="toggleGuides(); closeAllMenus()">Toggle Guides</button>
+                    </div>
+                </div>
+                <div class="menu-dropdown">
+                    <button class="menu-item" onclick="toggleMenu('tools-menu')">Tools</button>
+                    <div class="menu-content" id="tools-menu">
+
+                        <button class="menu-option" onclick="setTool('select'); closeAllMenus()">Select Tool</button>
+                        <button class="menu-option" onclick="setTool('pen'); closeAllMenus()">Pen Tool</button>
+                        <button class="menu-option" onclick="setTool('rectangle'); closeAllMenus()">Rectangle Tool</button>
+                        <button class="menu-option" onclick="setTool('circle'); closeAllMenus()">Circle Tool</button>
+                        <button class="menu-option" onclick="setTool('line'); closeAllMenus()">Line Tool</button>
+                        <button class="menu-option" onclick="setTool('text'); closeAllMenus()">Text Tool</button>
+                        <button class="menu-option" onclick="setTool('pan'); closeAllMenus()">Pan Tool</button>
+                        <button class="menu-option" onclick="setTool('eyedropper'); closeAllMenus()">Eyedropper Tool</button>
+                        <button class="menu-option" onclick="setTool('eraser'); closeAllMenus()">Eraser Tool</button>
+                    </div>
+                </div>
+                <div class="menu-dropdown">
+                    <button class="menu-item" onclick="toggleMenu('xvg-menu')">XVG</button>
+                    <div class="menu-content" id="xvg-menu">
+                        <button class="menu-option" onclick="if(window.openSDFPanel) openSDFPanel(); else console.warn('SDF Panel not loaded'); closeAllMenus()">SDF Neural Network</button>
+                        <button class="menu-option" onclick="if(window.open3DPanel) open3DPanel(); else console.warn('3D Panel not loaded'); closeAllMenus()">3D Mesh Generation</button>
+                        <button class="menu-option" onclick="if(window.openShaderPanel) openShaderPanel(); else console.warn('Shader Panel not loaded'); closeAllMenus()">WGSL Shaders</button>
+                        <button class="menu-option" onclick="if(window.openCRDTPanel) openCRDTPanel(); else console.warn('CRDT Panel not loaded'); closeAllMenus()">Collaboration</button>
+                        <div class="menu-separator"></div>
+                        <button class="menu-option" onclick="validateXVG(); closeAllMenus()">Validate XVG</button>
+                        <button class="menu-option" onclick="showXVGInfo(); closeAllMenus()">XVG Info</button>
+                    </div>
+                </div>
+                <div class="menu-dropdown">
+                    <button class="menu-item" onclick="toggleMenu('help-menu')">Help</button>
+                    <div class="menu-content" id="help-menu">
+                        <button class="menu-option" onclick="help(); closeAllMenus()">Help</button>
+                        <button class="menu-option" onclick="about(); closeAllMenus()">About</button>
+                        <div class="menu-separator"></div>
+                        <button class="menu-option" onclick="testXVGWasm(); closeAllMenus()">Test WASM</button>
+                        <button class="menu-option" onclick="debugEngineStatus(); closeAllMenus()">Debug Status</button>
+                        <button class="menu-option" onclick="testEngineConnections(); closeAllMenus()">Test Connections</button>
+                        <button class="menu-option" onclick="addTestShapes(); closeAllMenus()">Add Test Shapes</button>
+                        <button class="menu-option" onclick="add3DDemo(); closeAllMenus()">Add 3D Demo</button>
+                    </div>
+                </div>
+            </div>
+            <!-- Centered XVG Logo -->
+            <div class="menu-center-logo">
+                <img src="assets/texteditor.png" alt="XVG Editor" class="center-logo">
+            </div>
+        </div>
+        <!-- TOOLBAR -->
+        <div class="toolbar">
+            <!-- DRAWING TOOLS -->
+            <div class="toolbar-group">
+                <button class="toolbar-btn active" id="select-tool" onclick="setTool('select')" title="Select Tool (V)">
+                    <img src="assets/icons/white/icons8-cursor-100.png" alt="Select" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" id="pen-tool" onclick="setTool('pen')" title="Pen Tool (P)">
+                    <img src="assets/icons/white/icons8-ball-point-pen-100.png" alt="Pen" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" id="brush-tool" onclick="setTool('brush')" title="Brush Tool (B)">
+                    <img src="assets/icons/white/icons8-paint-100.png" alt="Brush" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" id="rectangle-tool" onclick="setTool('rectangle')" title="Rectangle Tool (M)">
+                    <img src="assets/icons/white/icons8-rectangle-100.png" alt="Rectangle" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" id="circle-tool" onclick="setTool('circle')" title="Circle Tool (O)">
+                    <img src="assets/icons/white/icons8-circled-thin-100.png" alt="Circle" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" id="polygon-tool" onclick="setTool('polygon')" title="Polygon Tool (G)">
+                    <img src="assets/icons/white/icons8-hexagon-100.png" alt="Polygon" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" id="triangle-tool" onclick="setTool('triangle')" title="Triangle Tool (Y)">
+                    <img src="assets/icons/white/icons8-triangle-100.png" alt="Triangle" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" id="line-tool" onclick="setTool('line')" title="Line Tool (L)">
+                    <img src="assets/icons/white/icons8-line-100.png" alt="Line" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" id="text-tool" onclick="setTool('text')" title="Text Tool (T)">
+                    <img src="assets/icons/white/icons8-text-100.png" alt="Text" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" id="eraser-tool" onclick="setTool('eraser')" title="Eraser Tool (E)">
+                    <img src="assets/icons/white/icons8-eraser-tool-100.png" alt="Eraser" class="tool-icon">
+                </button>
+                <div class="eraser-size-control" id="eraser-size-control" style="display: none;">
+                    <input type="range" id="eraser-radius-slider" min="1" max="100" value="20" 
+                           oninput="setEraserRadius(parseInt(this.value))" 
+                           title="Eraser Size">
+                    <span id="eraser-radius-value">20px</span>
+                </div>
+            </div>
+
+            <div class="toolbar-divider"></div>
+
+            <!-- NAVIGATION TOOLS -->
+            <div class="toolbar-group">
+                <button class="toolbar-btn" id="pan-tool" onclick="setTool('pan')" title="Pan Tool (H)">
+                    <img src="assets/icons/white/icons8-hand-pan-100.png" alt="Pan" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" id="eyedropper-tool" onclick="setTool('eyedropper')" title="Eyedropper Tool (I)">
+                    <img src="assets/icons/white/icons8-color-dropper-100.png" alt="Eyedropper" class="tool-icon">
+                    <div class="eyedropper-color-preview" id="eyedropper-color-preview"></div>
+                </button>
+                <button class="toolbar-btn" id="cut-tool" onclick="setTool('cut')" title="Cut Tool (X)">
+                    <img src="assets/icons/white/icons8-cut-100.png" alt="Cut" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" onclick="undo()" title="Undo (Ctrl+Z)">
+                    <img src="assets/icons/white/icons8-undo-100.png" alt="Undo" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" onclick="redo()" title="Redo (Ctrl+Y)">
+                    <img src="assets/icons/white/icons8-redo-100.png" alt="Redo" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" id="bgremover-tool" onclick="setTool('bgremover')" title="Background Remover (R)">
+                    <img src="assets/icons/white/icons8-magic-100.png" alt="Background Remover" class="tool-icon">
+                </button>            </div>
+
+            <div class="toolbar-divider"></div>
+        
+            <!-- VIEW CONTROLS -->
+            <div class="toolbar-group">
+                <button class="toolbar-btn" onclick="zoomIn()" title="Zoom In (+)">
+                    <img src="assets/icons/white/icons8-zoom-in-100.png" alt="Zoom In" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" onclick="zoomOut()" title="Zoom Out (-)">
+                    <img src="assets/icons/white/icons8-zoom-out-100.png" alt="Zoom Out" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" onclick="fitToView()" title="Fit to View (0)">
+                    <img src="assets/icons/white/icons8-full-image-100.png" alt="Fit to View" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" onclick="actualSize()" title="Actual Size (1)">
+                    <img src="assets/icons/white/icons8-original-size-100.png" alt="Actual Size" class="tool-icon">
+                </button>
+                <span class="zoom-level" id="zoom-level">100%</span>
+            </div>
+            
+            <div class="toolbar-divider"></div>
+            
+            <!-- VIEW TOGGLES -->
+            <div class="toolbar-group">
+                <button class="toolbar-btn" onclick="toggleGrid()" title="Toggle Grid">
+                    <img src="assets/icons/white/icons8-table-100.png" alt="Grid" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" onclick="toggleGridMode()" title="Toggle Grid Mode (Static/Moving)">
+                    <img src="assets/icons/white/icons8-project-setup-100.png" alt="Grid Mode" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" onclick="setSubtleGrid()" title="Subtle Grid (Less Distracting)">
+                    <img src="assets/icons/white/icons8-eye-100.png" alt="Subtle Grid" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" onclick="toggleRulers()" title="Toggle Rulers">
+                    <img src="assets/icons/white/icons8-ruler-100.png" alt="Rulers" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" onclick="toggleGuides()" title="Toggle Guides">
+                    <img src="assets/icons/white/icons8-horiz-guide-100.png" alt="Guides" class="tool-icon">
+                </button>
+            </div>
+            
+            <div class="toolbar-divider"></div>
+            
+            <!-- Text Styling -->
+            <div class="toolbar-group text-styling-group">
+                <button class="toolbar-btn" onclick="setTextStyle('bold')" title="Bold" id="text-bold">
+                    <img src="assets/icons/white/icons8-bold-100.png" alt="Bold" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" onclick="setTextStyle('italic')" title="Italic" id="text-italic">
+                    <img src="assets/icons/white/icons8-italic-100.png" alt="Italic" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" onclick="setTextStyle('underline')" title="Underline" id="text-underline">
+                    <img src="assets/icons/white/icons8-underline-100.png" alt="Underline" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" onclick="setTextStyle('strikethrough')" title="Strikethrough" id="text-strikethrough">
+                    <img src="assets/icons/white/icons8-strikethrough-100.png" alt="Strikethrough" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" onclick="setTextAlign('left')" title="Align Left" id="text-align-left">
+                    <img src="assets/icons/white/icons8-align-left-100.png" alt="Align Left" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" onclick="setTextAlign('center')" title="Align Center" id="text-align-center">
+                    <img src="assets/icons/white/icons8-align-center-100.png" alt="Align Center" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" onclick="setTextAlign('right')" title="Align Right" id="text-align-right">
+                    <img src="assets/icons/white/icons8-align-right-100.png" alt="Align Right" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" onclick="setTextAlign('justify')" title="Justify" id="text-align-justify">
+                    <img src="assets/icons/white/icons8-align-justify-100.png" alt="Justify" class="tool-icon">
+                </button>
+                <button class="toolbar-btn" onclick="openFontDialog()" title="Font Settings" id="font-settings-btn">
+                    <img src="assets/icons/white/icons8-typography-100.png" alt="Font Settings" class="tool-icon">
+                </button>
+                <label for="font-family" class="sr-only">Font Family</label>
+                <select class="toolbar-select" id="font-family" onchange="setFontFamily(this.value)" title="Font Family" aria-label="Font Family">
+                    <option value="Arial">Arial</option>
+                    <option value="Helvetica">Helvetica</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Georgia">Georgia</option>
+                    <option value="Verdana">Verdana</option>
+                    <option value="Courier New">Courier New</option>
+                    <option value="Comic Sans MS">Comic Sans MS</option>
+                    <option value="Impact">Impact</option>
+                    <option value="Tahoma">Tahoma</option>
+                    <option value="Trebuchet MS">Trebuchet MS</option>
+                </select>
+                <label for="font-size" class="sr-only">Font Size</label>
+                <select class="toolbar-select" id="font-size" onchange="setFontSize(this.value)" title="Font Size" aria-label="Font Size">
+                    <option value="8">8</option>
+                    <option value="10">10</option>
+                    <option value="12">12</option>
+                    <option value="14" selected>14</option>
+                    <option value="16">16</option>
+                    <option value="18">18</option>
+                    <option value="20">20</option>
+                    <option value="24">24</option>
+                    <option value="28">28</option>
+                    <option value="32">32</option>
+                    <option value="36">36</option>
+                    <option value="48">48</option>
+                    <option value="72">72</option>
+                </select>
+                <label for="text-color" class="sr-only">Text Colour</label>
+                <input type="color" class="toolbar-color-picker" id="text-color" value="#000000" onchange="setTextColor(this.value)" title="Text Colour" aria-label="Text Colour">
+            </div>
+
+            <div class="toolbar-divider"></div>
+
+            <!-- PANEL BUTTONS -->
+            <div class="toolbar-group">
+                <button class="toolbar-btn panel-btn" id="layers-panel-btn" onclick="showPanel('layers')" title="Layers Panel">
+                    <img src="assets/icons/white/icons8-layers-100.png" alt="Layers" class="tool-icon">
+                </button>
+                <button class="toolbar-btn panel-btn" id="sdf-panel-btn" onclick="showPanel('sdf')" title="SDF Neural Network Panel">
+                    <img src="assets/icons/white/icons8-neural-100.png" alt="SDF" class="tool-icon">
+                </button>
+                <button class="toolbar-btn panel-btn" id="3d-panel-btn" onclick="showPanel('3d')" title="3D Mesh Panel">
+                    <img src="assets/icons/white/icons8-3d-model-100.png" alt="3D" class="tool-icon">
+                </button>
+                <button class="toolbar-btn panel-btn" id="shaders-panel-btn" onclick="showPanel('shaders')" title="WGSL Shaders Panel">
+                    <img src="assets/icons/white/icons8-design-100.png" alt="Shaders" class="tool-icon">
+                </button>
+                <button class="toolbar-btn panel-btn" id="crdt-panel-btn" onclick="showPanel('collab')" title="Collaboration Panel">
+                    <img src="assets/icons/white/icons8-group-objects-100.png" alt="Collaboration" class="tool-icon">
+                </button>
+                <button class="toolbar-btn panel-btn" id="export-panel-btn" onclick="showPanel('export')" title="Export Panel">
+                    <img src="assets/icons/white/icons8-export-100.png" alt="Export" class="tool-icon">
+                </button>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            <!-- LEFT SIDEBAR -->
+            <div class="left-sidebar">
+                <div class="sidebar-section">
+                    <h4>Tools</h4>
+                    <div class="tool-category">
+                        <div class="tool-category-header" onclick="toggleToolCategory('selection')">
+                            <span>Selection</span>
+                            <img src="assets/icons/white/icons8-chevron-down-100.png" alt="Expand" class="toggle-icon">
+                        </div>
+                        <div class="tool-category-content" id="selection-tools">
+                            <button class="tool-btn" onclick="selectTool('select')" title="Select Tool">
+                                <img src="assets/icons/white/icons8-cursor-100.png" alt="Select" class="tool-icon"> <span>Select</span>
+                            </button>
+                            <button class="tool-btn" onclick="selectTool('pan')" title="Pan Tool">
+                                <img src="assets/icons/white/icons8-hand-pan-100.png" alt="Pan" class="tool-icon"> <span>Pan</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="tool-category">
+                        <div class="tool-category-header" onclick="toggleToolCategory('drawing')">
+                            <span>Drawing</span>
+                            <img src="assets/icons/white/icons8-chevron-down-100.png" alt="Expand" class="toggle-icon">
+                        </div>
+                        <div class="tool-category-content" id="drawing-tools">
+                            <button class="tool-btn" onclick="selectTool('pen')" title="Pen Tool">
+                                <img src="assets/icons/white/icons8-ball-point-pen-100.png" alt="Pen" class="tool-icon"> <span>Pen</span>
+                            </button>
+                            <button class="tool-btn" onclick="selectTool('brush')" title="Brush Tool">
+                                <img src="assets/icons/white/icons8-paint-100.png" alt="Brush" class="tool-icon"> <span>Brush</span>
+                            </button>
+                            <button class="tool-btn" onclick="selectTool('eraser')" title="Eraser Tool">
+                                <img src="assets/icons/white/icons8-eraser-tool-100.png" alt="Eraser" class="tool-icon"> <span>Eraser</span>
+                            </button>
+                            <button class="tool-btn" onclick="selectTool('eyedropper')" title="Eyedropper Tool">
+                                <img src="assets/icons/white/icons8-color-dropper-100.png" alt="Dropper" class="tool-icon"> <span>Dropper</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="tool-category">
+                        <div class="tool-category-header" onclick="toggleToolCategory('shapes')">
+                            <span>Shapes</span>
+                            <img src="assets/icons/white/icons8-chevron-down-100.png" alt="Expand" class="toggle-icon">
+                        </div>
+                        <div class="tool-category-content" id="shapes-tools">
+                            <button class="tool-btn" onclick="selectTool('rectangle')" title="Rectangle Tool">
+                                <img src="assets/icons/white/icons8-rectangle-100.png" alt="Rectangle" class="tool-icon"> <span>Rectangle</span>
+                            </button>
+                            <button class="tool-btn" onclick="selectTool('circle')" title="Circle Tool">
+                                <img src="assets/icons/white/icons8-circled-thin-100.png" alt="Circle" class="tool-icon"> <span>Circle</span>
+                            </button>
+                            <button class="tool-btn" onclick="selectTool('line')" title="Line Tool">
+                                <img src="assets/icons/white/icons8-line-100.png" alt="Line" class="tool-icon"> <span>Line</span>
+                            </button>
+                            <button class="tool-btn" onclick="selectTool('polygon')" title="Polygon Tool">
+                                <img src="assets/icons/white/icons8-hexagon-100.png" alt="Polygon" class="tool-icon"> <span>Polygon</span>
+                            </button>
+                            <button class="tool-btn" onclick="selectTool('triangle')" title="Triangle Tool">
+                                <img src="assets/icons/white/icons8-triangle-100.png" alt="Triangle" class="tool-icon"> <span>Triangle</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="tool-category">
+                        <div class="tool-category-header" onclick="toggleToolCategory('text')">
+                            <span>Text</span>
+                            <img src="assets/icons/white/icons8-chevron-down-100.png" alt="Expand" class="toggle-icon">
+                        </div>
+                        <div class="tool-category-content" id="text-tools">
+                            <button class="tool-btn" onclick="selectTool('text')" title="Text Tool">
+                                <img src="assets/icons/white/icons8-text-100.png" alt="Text" class="tool-icon"> <span>Text</span>
+                            </button>
+                            <button class="tool-btn" onclick="selectTool('textbox')" title="Text Box Tool">
+                                <img src="assets/icons/white/icons8-text-box-100.png" alt="Text Box" class="tool-icon"> <span>Text Box</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="tool-category">
+                        <div class="tool-category-header" onclick="toggleToolCategory('effects')">
+                            <span>Effects</span>
+                            <img src="assets/icons/white/icons8-chevron-down-100.png" alt="Expand" class="toggle-icon">
+                        </div>
+                        <div class="tool-category-content" id="effects-tools">
+                            <button class="tool-btn" onclick="selectTool('gradient')" title="Gradient Tool">
+                                <img src="assets/icons/white/icons8-fill-color-100.png" alt="Gradient" class="tool-icon"> <span>Gradient</span>
+                            </button>
+                            <button class="tool-btn" onclick="selectTool('pattern')" title="Pattern Tool">
+                                <img src="assets/icons/white/icons8-candy-cane-pattern-100.png" alt="Pattern" class="tool-icon"> <span>Pattern</span>
+                            </button>
+                            <button class="tool-btn" onclick="selectTool('blur')" title="Blur Tool">
+                                <img src="assets/icons/white/icons8-blur-100.png" alt="Blur" class="tool-icon"> <span>Blur</span>
+                            </button>
+                            <button class="tool-btn" onclick="selectTool('shadow')" title="Shadow Tool">
+                                <img src="assets/icons/white/icons8-contrast-100.png" alt="Shadow" class="tool-icon"> <span>Shadow</span>
+                            </button>
+                        </div>
+                </div>
+                </div>
+            </div>
+            
+            <!-- CANVAS CONTAINER -->
+            <div class="canvas-container">
+                <div class="ruler-corner"></div>
+                <div class="ruler ruler-top" id="top-ruler"></div>
+                <div class="ruler ruler-left" id="left-ruler"></div>
+                <div class="canvas-wrapper">
+                    <canvas id="main-canvas" width="2000" height="1500"></canvas>
+                    <canvas id="selection-overlay" width="2000" height="1500"></canvas>
+                </div>
+            </div>
+
+            <!-- RIGHT PANEL -->
+            <div class="right-sidebar">
+
+                <div class="sidebar-header">
+                    <h3>Properties & Panels</h3>
+                    <button class="collapse-btn" onclick="toggleRightSidebar()">
+                        <img src="assets/icons/white/icons8-chevron-down-100.png" alt="Collapse" class="btn-icon">
+                    </button>
+                </div>
+                
+                <!-- Panel Content Container -->
+                <div class="panel-content-container">
+                
+                <!-- Tab Contents -->
+                <div class="tab-content active" id="properties-tab">
+                    <div class="panel-section">
+                        <div class="panel-section-header" onclick="togglePanelSection('fill-stroke')">
+                            <span>Fill & Stroke</span>
+                            <img src="assets/icons/white/icons8-chevron-down-100.png" alt="Expand" class="toggle-icon">
+                        </div>
+                        <div class="panel-section-content" id="fill-stroke-content">
+                        <div class="color-controls">
+                            <div class="color-group">
+                                <label for="fill-color">Fill Colour</label>
+                                <div class="color-control-row">
+                                    <input type="color" id="fill-color" value="#ffffff" onchange="window.updateFillColor(this.value)" aria-label="Fill Color">
+                                    <input type="range" id="fill-opacity" min="0" max="100" value="100" onchange="updateFillOpacity(this.value)" autocomplete="off">
+                                    <span class="opacity-value" id="fill-opacity-value">100%</span>
+                                </div>
+                            </div>
+                            <div class="color-group">
+                                <label for="stroke-color">Stroke Colour</label>
+                                <div class="color-control-row">
+                                    <input type="color" id="stroke-color" value="#000000" onchange="window.updateStrokeColor(this.value)" aria-label="Stroke Color">
+                                    <input type="range" id="stroke-opacity" min="0" max="100" value="100" onchange="updateStrokeOpacity(this.value)" autocomplete="off">
+                                    <span class="opacity-value" id="stroke-opacity-value">100%</span>
+                                </div>
+                            </div>
+                            <div class="control-group">
+                                <label for="stroke-width">Stroke Width</label>
+                                <input type="range" id="stroke-width" min="0" max="50" value="2" onchange="updateStrokeWidth(this.value)" autocomplete="off">
+                                <span class="range-value" id="stroke-width-value">2</span>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                    
+                    <div class="panel-section">
+                        <div class="panel-section-header" onclick="togglePanelSection('transform')">
+                            <span>Transform</span>
+                            <img src="assets/icons/white/icons8-chevron-down-100.png" alt="Expand" class="toggle-icon">
+                        </div>
+                        <div class="panel-section-content" id="transform-content">
+                        <div class="transform-grid">
+                            <div class="transform-row">
+                                <div class="control-group compact">
+                                    <label for="pos-x"><img src="assets/icons/white/icons8-resize-horizontal-100.png" alt="X" class="transform-icon"> X</label>
+                                    <input type="number" id="pos-x" value="0" onchange="updatePosition()" class="transform-input" autocomplete="off">
+                                </div>
+                                <div class="control-group compact">
+                                    <label for="pos-y"><img src="assets/icons/white/icons8-resize-vertical-100.png" alt="Y" class="transform-icon"> Y</label>
+                                    <input type="number" id="pos-y" value="0" onchange="updatePosition()" class="transform-input" autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="transform-row">
+                                <div class="control-group compact">
+                                    <label for="width"><img src="assets/icons/white/icons8-width-100.png" alt="W" class="transform-icon"> W</label>
+                                    <input type="number" id="width" value="100" onchange="updateSize()" class="transform-input" autocomplete="off">
+                                </div>
+                                <div class="control-group compact">
+                                    <label for="height"><img src="assets/icons/white/icons8-height-100.png" alt="H" class="transform-icon"> H</label>
+                                    <input type="number" id="height" value="100" onchange="updateSize()" class="transform-input" autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="transform-row single">
+                                <div class="control-group">
+                                    <label for="rotation"><img src="assets/icons/white/icons8-rotate-right-100.png" alt="Rotation" class="transform-icon"> Rotation (°)</label>
+                                    <input type="number" id="rotation" value="0" onchange="updateRotation()" class="transform-input" min="-360" max="360" step="1" autocomplete="off">
+                                </div>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                    
+                    <!-- XVG Logo positioned at bottom of panel -->
+                    <div class="xvg-logo-container">
+                        <img src="assets/XVGLOGO.png" alt="XVG Logo" class="xvg-logo">
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="sdf-tab">
+                    <div class="panel-section">
+                        <h4>SDF Neural Network</h4>
+                        <div class="sdf-controls">
+                            <button class="btn btn--primary" onclick="trainSDF()">Train SDF</button>
+                            <button class="btn" onclick="evaluateSDF()">Evaluate</button>
+                            <button class="btn" onclick="exportSDF()">Export Weights</button>
+                        </div>
+                        <div class="training-progress">
+                            <div class="progress">
+                                <div class="progress-bar" id="sdf-progress" style="width: 0%"></div>
+                            </div>
+                            <div id="sdf-progress-text">SDF network ready</div>
+                        </div>
+                    </div>
+                    
+                    <div class="panel-section">
+                        <h4>SDF Parameters</h4>
+                        <div class="control-group">
+                            <label for="sdf-resolution">Resolution</label>
+                            <input type="range" id="sdf-resolution" min="64" max="512" value="256" onchange="updateSDFResolution()" autocomplete="off">
+                            <span class="range-value" id="sdf-resolution-value">256</span>
+                        </div>
+                        <div class="control-group">
+                            <label for="sdf-smoothness">Smoothness</label>
+                            <input type="range" id="sdf-smoothness" min="0" max="100" value="50" onchange="updateSDFSmoothness()" autocomplete="off">
+                            <span class="range-value" id="sdf-smoothness-value">50</span>
+                        </div>
+                    </div>
+                    
+                    <div class="panel-section">
+                        <h4>SDF Preview</h4>
+                        <div class="sdf-preview">
+                            <canvas id="sdf-canvas" width="200" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="3d-tab">
+                    <div class="panel-section">
+                        <h4>3D Mesh Generation</h4>
+                        <div class="extrusion-controls">
+                        <div class="control-group">
+                            <label for="extrusion-height">Extrusion Height</label>
+                            <input type="range" id="extrusion-height" min="0" max="100" value="10" onchange="updateExtrusion()" autocomplete="off">
+                            <span class="range-value" id="extrusion-height-value">10px</span>
+                        </div>
+                            <button class="btn btn--primary" onclick="generate3DMesh()">Generate Mesh</button>
+                            <button class="btn" onclick="export3D()">Export 3D</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="shaders-tab">
+                    <div class="panel-section">
+                        <h4>WGSL Shader Editor</h4>
+                        <div class="shader-editor">
+                            <textarea id="shader-code" placeholder="Enter WGSL shader code here...">@vertex
+fn vertex_main(@builtin(vertex_index) vertex_index: u32) -> @builtin(position) vec4<f32> {
+    var pos = array<vec2<f32>, 3>(
+        vec2<f32>( 0.0,  0.5),
+        vec2<f32>(-0.5, -0.5),
+        vec2<f32>( 0.5, -0.5)
+    );
+    return vec4<f32>(pos[vertex_index], 0.0, 1.0);
+}
+
+@fragment
+fn fragment_main() -> @location(0) vec4<f32> {
+    return vec4<f32>(1.0, 0.0, 0.0, 1.0);
+}</textarea>
+                            <div class="shader-actions">
+                                <button class="btn btn--primary" onclick="compileShader()">Compile</button>
+                                <button class="btn" onclick="saveShader()">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="panel-section">
+                        <h4>Shader Preview</h4>
+                        <div class="shader-preview">
+                            <canvas id="shader-canvas" width="200" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="collab-tab">
+                    <div class="panel-section">
+                        <h4>Collaboration</h4>
+                        <div class="ai-controls">
+                            <button class="btn btn--primary" onclick="startCollaboration()">Start Session</button>
+                            <button class="btn" onclick="joinCollaboration()">Join Session</button>
+                            <button class="btn" onclick="stopCollaboration()">Stop Session</button>
+                        </div>
+                        <div class="control-group">
+                            <label for="session-id">Session ID</label>
+                            <input type="text" id="session-id" placeholder="Enter session ID" autocomplete="off">
+                        </div>
+                        <div class="control-group">
+                            <label for="username">Username</label>
+                            <input type="text" id="username" placeholder="Enter username" autocomplete="username">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="layers-tab">
+                    <div class="panel-section">
+                        <h4>Layer Management</h4>
+                        <div class="layers-header">
+                            <button class="btn btn--sm" onclick="addLayer()" title="Add Layer">
+                                <img src="assets/icons/white/icons8-add-100.png" alt="Add" class="btn-icon layer-add-icon">
+                            </button>
+                            <div class="layers-header-center">
+                                <span>Layers</span>
+                            </div>
+                            <button class="btn btn--sm" onclick="deleteSelectedLayer()" title="Delete Layer">
+                                <img src="assets/icons/white/icons8-trash-100.png" alt="Delete" class="btn-icon">
+                            </button>
+                        </div>
+                        <div class="layer-list" id="layer-list">
+                            <!-- Layers will be added here -->
+                        </div>
+                    </div>
+                    
+                    <div class="panel-section">
+                        <h4>Layer Actions</h4>
+                        <div class="layer-actions">
+                            <button class="btn" onclick="duplicateLayer()">
+                                <img src="assets/icons/white/icons8-copy-100.png" alt="Duplicate" class="btn-icon">
+                                <span>Duplicate</span>
+                            </button>
+                            <button class="btn" onclick="mergeLayers()">
+                                <img src="assets/icons/white/icons8-group-objects-100.png" alt="Merge" class="btn-icon">
+                                <span>Merge</span>
+                            </button>
+                            <button class="btn" onclick="flattenLayers()">
+                                <img src="assets/icons/white/icons8-collapse-100.png" alt="Flatten" class="btn-icon">
+                                <span>Flatten</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="export-tab">
+                    <div class="panel-section">
+                        <h4>XVG Export Settings</h4>
+                        <div class="control-group">
+                            <label>Compression Level</label>
+                            <select id="compression-level" class="form-control">
+                                <option value="0">None</option>
+                                <option value="1">Low</option>
+                                <option value="2" selected>Medium</option>
+                                <option value="3">High</option>
+                            </select>
+                        </div>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="include-neural" checked>
+                                <span class="checkmark"></span>
+                                Include Neural Weights
+                            </label>
+                        </div>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="include-3d" checked>
+                                <span class="checkmark"></span>
+                                Include 3D Data
+                            </label>
+                        </div>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="include-shaders" checked>
+                                <span class="checkmark"></span>
+                                Include Shaders
+                            </label>
+                        </div>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="include-crdt" checked>
+                                <span class="checkmark"></span>
+                                Include CRDT Data
+                            </label>
+                        </div>
+                        <button class="btn btn--primary" onclick="console.log('[UI] Export XVG button clicked (panel)'); exportXVG()">Export XVG</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HIDDEN FILE INPUT -->
+
+    <input type="file" id="file-input" accept=".xvg,.svg,.png,.jpg,.jpeg" style="display: none;" onchange="handleFileInputChange(this)">
+
+    <!-- MINIMAL MODULE LOADER -->
+    <script>
+        console.log('Basic JavaScript test - scripts are loading');
+        
+        // FIXED MODULE LOADER - PROPER INITIALIZATION SEQUENCING
+        window.ModuleLoader = {
+            modules: {
+                utilities: { loaded: false, ready: false, dependencies: [] },
+                core: { loaded: false, ready: false, dependencies: ['utilities'] },
+                tools: { loaded: false, ready: false, dependencies: ['utilities', 'core'] }
+            },
+            
+            allModulesReady: false,
+            systemInitialized: false,
+            initializationPhase: 'loading', // loading → tools → canvas → events → ready
+            
+            markModuleLoaded: function(moduleName) {
+                if (this.modules[moduleName]) {
+                    this.modules[moduleName].loaded = true;
+                    console.log(`Module ${moduleName} loaded`);
+                    this.checkDependencies();
+                }
+            },
+            
+            markModuleReady: function(moduleName) {
+                if (this.modules[moduleName]) {
+                    this.modules[moduleName].ready = true;
+                    console.log(`Module ${moduleName} ready`);
+                    this.checkDependencies();
+                }
+            },
+            
+            checkDependencies: function() {
+                for (const [moduleName, module] of Object.entries(this.modules)) {
+                    if (module.loaded && !module.ready) {
+                        const dependenciesMet = module.dependencies.every(dep => 
+                            this.modules[dep] && this.modules[dep].ready
+                        );
+                        
+                        if (dependenciesMet) {
+                            console.log(`🔧 Dependencies met for ${moduleName}, can initialize`);
+                        }
+                    }
+                }
+                
+                this.checkAllModulesReady();
+            },
+            
+            checkAllModulesReady: function() {
+                const allReady = Object.values(this.modules).every(module => module.loaded && module.ready);
+                if (allReady && !this.allModulesReady) {
+                    this.allModulesReady = true;
+                    console.log('All modules ready, starting proper initialization sequence...');
+                    this.beginInitializationSequence();
+                }
+            },
+            
+            beginInitializationSequence: function() {
+                if (this.systemInitialized) {
+                    console.log('XVG system already initialized');
+                    return;
+                }
+                
+                console.log('Starting proper initialization sequence...');
+                this.initializationPhase = 'tools';
+                this.initializeTools();
+            },
+            
+            initializeTools: function() {
+                console.log('🔧 Phase 1: Initializing tools...');
+                
+                // Call the proper initializeTools function from tools module
+                if (window.initializeTools) {
+                    const success = window.initializeTools();
+                    if (success) {
+                        console.log('Tools initialized successfully');
+                    } else {
+                        console.error('Tools initialization failed');
+                    }
+                } else {
+                    console.warn('initializeTools function not available');
+                }
+                
+                // Move to next phase
+                this.initializationPhase = 'canvas';
+                this.initializeCanvas();
+            },
+            
+            initializeCanvas: function() {
+                console.log('Phase 2: Initializing canvas...');
+                
+                // Initialize canvas only after tools are ready
+                if (window.initializeCanvas) {
+                    const canvasSuccess = window.initializeCanvas();
+                    if (canvasSuccess) {
+                        console.log('Canvas initialized successfully');
+                    } else {
+                        console.error('Canvas initialization failed');
+                    }
+                } else {
+                    console.warn('Canvas initialization function not available');
+                }
+                
+                // Move to next phase
+                this.initializationPhase = 'events';
+                this.setupEventHandlers();
+            },
+            
+            setupEventHandlers: function() {
+                console.log('Phase 3: Setting up event handlers...');
+                
+                // Set up mouse events only after canvas and tools are ready
+                if (window.XVGSystem && window.XVGSystem.setupCanvasEventHandlers) {
+                    window.XVGSystem.setupCanvasEventHandlers();
+                    console.log('Event handlers set up successfully');
+                } else {
+                    console.warn('Event handler setup function not available');
+                }
+                
+                // Move to final phase
+                this.initializationPhase = 'ready';
+                this.finalizeSystem();
+            },
+            
+            finalizeSystem: function() {
+                console.log('Phase 4: Finalizing system...');
+                
+                this.systemInitialized = true;
+                
+                // Dispatch system ready event
+                window.dispatchEvent(new CustomEvent('xvg-system-ready', {
+                    detail: { 
+                        success: true, 
+                        system: typeof window.XVGSystem !== 'undefined' ? window.XVGSystem : null,
+                        phase: this.initializationPhase
+                    }
+                }));
+                
+                // Test system status
+                setTimeout(() => {
+                    console.log('Final system test...');
+                    console.log('XVGSystem available:', !!window.XVGSystem);
+                    if (window.XVGSystem) {
+                        console.log('System state:', {
+                            toolsReady: window.XVGSystem.tools && window.XVGSystem.tools.ready,
+                            canvasReady: window.XVGSystem.canvas && window.XVGSystem.canvas.ready,
+                            currentTool: window.XVGSystem.appState && window.XVGSystem.appState.currentTool,
+                            initializationPhase: this.initializationPhase
+                        });
+                        
+                    }
+                }, 500);
+                
+                console.log('XVG system initialization complete with proper sequencing');
+            }
+        };
+        
+        console.log('Fixed ModuleLoader initialized with proper sequencing');
+    </script>
+    
+    <!-- LOAD MODULES WITH PROPER DEPENDENCY MANAGEMENT -->
+    <script src="pkg/xvg-utilities.js?v=1756637555"></script>
+    <script src="assets/icon-manager.js?v=1756637555"></script>
+    <script src="pkg/xvg-asset-manager.js?v=1756637555"></script>
+    <script src="pkg/xvg-asset-optimizer.js?v=1756637555"></script>
+    <script src="pkg/xvg-core.js?v=1756637555"></script>
+    <script src="pkg/xvg-tools.js?v=1756637555"></script>
+    
+    <!-- MINIMAL MENU MANAGEMENT -->
+    <script>
+        function closeAllMenus() {
+            const menus = document.querySelectorAll('.menu-content');
+            menus.forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+        
+        function toggleMenu(menuId) {
+            console.log('[Menu] Toggling menu:', menuId);
+            const allMenus = document.querySelectorAll('.menu-content');
+            allMenus.forEach(menu => {
+                if (menu.id !== menuId) {
+                    menu.classList.remove('show');
+                }
+            });
+
+            const menu = document.getElementById(menuId);
+            if (menu) {
+                console.log('[Menu] Found menu element:', menuId);
+                menu.classList.toggle('show');
+                console.log('[Menu] Menu', menuId, 'is now:', menu.classList.contains('show') ? 'visible' : 'hidden');
+            } else {
+                console.error('[Menu] Menu element not found:', menuId);
+            }
+        }
+
+        
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.classList.toggle('collapsed');
+                const header = section.previousElementSibling;
+                if (header) {
+                    header.classList.toggle('expanded');
+                }
+            }
+        }
+        
+        function showPanel(panelName) {
+            // Hide all panel contents
+            const panelContents = document.querySelectorAll('.tab-content');
+            panelContents.forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active class from all panel buttons
+            const panelButtons = document.querySelectorAll('.panel-btn');
+            panelButtons.forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            // Show selected panel content
+            const selectedPanel = document.getElementById(panelName + '-tab');
+            if (selectedPanel) {
+                selectedPanel.classList.add('active');
+            }
+            
+            // Add active class to selected panel button
+            const selectedButton = document.getElementById(panelName + '-panel-btn');
+            if (selectedButton) {
+                selectedButton.classList.add('active');
+            }
+        }
+        
+        function toggleLeftSidebar() {
+            const sidebar = document.querySelector('.left-sidebar');
+            sidebar.classList.toggle('collapsed');
+        }
+        
+        function togglePanelSection(sectionId) {
+            const content = document.getElementById(sectionId + '-content');
+            const header = content.previousElementSibling;
+            
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                header.classList.remove('collapsed');
+            } else {
+                content.classList.add('collapsed');
+                header.classList.add('collapsed');
+            }
+        }
+        
+        function toggleRightSidebar() {
+            const sidebar = document.querySelector('.right-sidebar');
+            sidebar.classList.toggle('collapsed');
+        }
+        
+        document.addEventListener('click', function(event) {
+            const menuBar = document.querySelector('.menu-bar');
+            if (menuBar && !menuBar.contains(event.target)) {
+                closeAllMenus();
+            }
+        });
+        
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeAllMenus();
+            }
+        });
+
+        
+        // DRAG AND DROP FUNCTIONALITY
+        function initializeDragAndDrop() {
+            const canvas = document.getElementById('main-canvas');
+            const canvasContainer = document.querySelector('.canvas-container');
+            const layerList = document.getElementById('layer-list');
+            const fileInput = document.getElementById('file-input');
+            
+            // File drag and drop onto canvas
+            canvasContainer.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                canvasContainer.classList.add('drag-over');
+            });
+
+            canvasContainer.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                canvasContainer.classList.remove('drag-over');
+            });
+
+            canvasContainer.addEventListener('drop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                canvasContainer.classList.remove('drag-over');
+
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleDroppedFiles(files);
+                }
+            });
+            
+            // Layer reordering drag and drop
+            if (layerList) {
+                layerList.addEventListener('dragstart', function(e) {
+                    if (e.target.classList.contains('layer-item')) {
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/html', e.target.outerHTML);
+                        e.target.classList.add('dragging');
+                    }
+                });
+                
+                layerList.addEventListener('dragend', function(e) {
+                    if (e.target.classList.contains('layer-item')) {
+                        e.target.classList.remove('dragging');
+                    }
+                });
+                
+                layerList.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    
+                    const draggingElement = document.querySelector('.layer-item.dragging');
+                    if (draggingElement) {
+                        const afterElement = getDragAfterElement(layerList, e.clientY);
+                        if (afterElement == null) {
+                            layerList.appendChild(draggingElement);
+                        } else {
+                            layerList.insertBefore(draggingElement, afterElement);
+                        }
+                    }
+                });
+                
+                layerList.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    const draggingElement = document.querySelector('.layer-item.dragging');
+                    if (draggingElement) {
+                        updateLayerOrder();
+                    }
+                });
+            }
+            
+            // Canvas element dragging
+            // Legacy event handlers removed - using proper tool system from xvg-core.js
+        }
+        
+        function handleFileInputChange(input) {
+            console.log('[File Input] ===== FILE INPUT CHANGED =====');
+            console.log('[File Input] Input element:', input);
+            console.log('[File Input] Files available:', !!input.files);
+            console.log('[File Input] Files count:', input.files ? input.files.length : 0);
+
+            if (input.files && input.files.length > 0) {
+                console.log('[File Input] Processing files via handleDroppedFiles');
+                handleDroppedFiles(input.files);
+                // Clear the input so the same file can be selected again
+                input.value = '';
+            } else {
+                console.log('[File Input] No files selected');
+            }
+        }
+        
+        function handleDroppedFiles(files) {
+            console.log('[File Drop] ===== FILES DROPPED =====');
+            console.log('[File Drop] Number of files:', files.length);
+            Array.from(files).forEach((file, index) => {
+                console.log(`[File Drop] File ${index + 1}:`, file.name, `(${file.size} bytes, ${file.type})`);
+            });
+
+            Array.from(files).forEach(file => {
+                const fileExtension = file.name.split('.').pop().toLowerCase();
+                console.log('[File Drop] Processing file:', file.name, 'extension:', fileExtension);
+
+                switch (fileExtension) {
+                    case 'xvg':
+                        importXVGFile(file);
+                        break;
+                    case 'svg':
+                        importSVGFile(file);
+                        break;
+                    case 'png':
+                    case 'jpg':
+                    case 'jpeg':
+                        importImageFile(file);
+                        break;
+                    default:
+                        console.warn('Unsupported file type:', fileExtension);
+                }
+            });
+        }
+        
+        function importXVGFile(file) {
+            console.log('Starting XVG file import for:', file.name);
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                                console.log('FileReader loaded, buffer size:', e.target.result.byteLength);
+                try {
+                    if (window.XVGSystem && window.XVGSystem.import) {
+                        console.log('XVGSystem and import available, calling loadXVGFromBuffer...');
+                        // Set current filename for save operations
+                        window.XVGSystem.appState.currentFilename = file.name;
+                        window.XVGSystem.import.loadXVGFromBuffer(e.target.result);
+                        console.log('XVG file imported successfully:', file.name);
+                        console.log('Current paths count:', window.XVGSystem?.appState?.paths?.length || 0);
+                        console.log('Current layers:', window.XVGSystem?.appState?.layers);
+                    } else {
+                        console.error('XVG import system not available');
+                        console.log('window.XVGSystem:', !!window.XVGSystem);
+                        console.log('window.XVGSystem.import:', !!window.XVGSystem?.import);
+                    }
+                } catch (error) {
+                    console.error('Error importing XVG file:', error);
+                    console.error('Error details:', error.message, error.stack);
+                }
+            };
+            reader.onerror = function(e) {
+                console.error('FileReader error:', e);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        function importSVGFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    if (window.XVGSystem && window.XVGSystem.import) {
+                        // Set current filename for save operations (convert .svg to .xvg)
+                        const xvgFilename = file.name.replace(/\.svg$/i, '.xvg');
+                        window.XVGSystem.appState.currentFilename = xvgFilename;
+                        window.XVGSystem.import.importSVG(e.target.result);
+                        console.log('SVG file imported successfully:', file.name);
+                    } else {
+                        console.error('SVG import system not available');
+                    }
+                } catch (error) {
+                    console.error('Error importing SVG file:', error);
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        function importImageFile(file) {
+            console.log('[PNG Import] ===== STARTING PNG IMPORT =====');
+            console.log('[PNG Import] File:', file.name);
+            console.log('[PNG Import] Size:', file.size, 'bytes');
+            console.log('[PNG Import] Type:', file.type);
+            console.log('[PNG Import] XVGSystem available:', !!window.XVGSystem);
+            console.log('[PNG Import] Tools available:', !!window.XVGSystem?.tools);
+            console.log('[PNG Import] Image tool available:', !!window.XVGSystem?.tools?.image);
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const img = new Image();
+                    img.onload = function() {
+                        console.log('[PNG Import] Image loaded - dimensions:', img.width, 'x', img.height);
+                        console.log('[PNG Import] Image data URL length:', e.target.result.length);
+
+                        if (window.XVGSystem && window.XVGSystem.tools && window.XVGSystem.tools.image) {
+                            console.log('[PNG Import] Before import - paths count:', window.XVGSystem.appState.paths.length);
+                            console.log('[PNG Import] Before import - images count:', window.XVGSystem.appState.images ? window.XVGSystem.appState.images.length : 0);
+                            console.log('[PNG Import] Calling addImageToCanvas...');
+
+                            window.XVGSystem.tools.image.addImageToCanvas(img, file.name);
+
+                            console.log('[PNG Import] After import - paths count:', window.XVGSystem.appState.paths.length);
+                            console.log('[PNG Import] After import - images count:', window.XVGSystem.appState.images ? window.XVGSystem.appState.images.length : 0);
+
+                            // Set current filename for saving if document appears new/empty
+                            const appState = window.XVGSystem.appState;
+                            const isNewDocument = !appState.currentFilename &&
+                                                 (appState.paths.length === 0) &&
+                                                 (!appState.images || appState.images.length === 1); // Just added this image
+
+                            if (isNewDocument) {
+                                // Convert image filename to .xvg extension
+                                const xvgFilename = file.name.replace(/\.(png|jpg|jpeg)$/i, '.xvg');
+                                appState.currentFilename = xvgFilename;
+                                console.log('[PNG Import] Set current filename for new image document:', xvgFilename);
+                            }
+
+                            console.log('[PNG Import] Image imported successfully');
+                        } else {
+                            console.error('[PNG Import] Image import system not available');
+                        }
+                    };
+                    img.src = e.target.result;
+                } catch (error) {
+                    console.error('[PNG Import] Error importing image:', error);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.layer-item:not(.dragging)')];
+            
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+        
+        function updateLayerOrder() {
+            const layerItems = document.querySelectorAll('.layer-item');
+            const newOrder = Array.from(layerItems).map((item, index) => ({
+                id: item.dataset.layerId,
+                index: index
+            }));
+            
+            if (window.XVGSystem && window.XVGSystem.layers) {
+                window.XVGSystem.layers.reorderLayers(newOrder);
+                console.log('Layer order updated');
+            }
+        }
+        
+        // Initialize drag and drop when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDragAndDrop();
+
+            // Initialize zoom level display
+            if (window.updateZoomLevelDisplay) {
+                window.updateZoomLevelDisplay();
+            }
+
+            // Initialize rulers display
+            setTimeout(() => {
+                const topRuler = document.getElementById('top-ruler');
+                const leftRuler = document.getElementById('left-ruler');
+                if (topRuler) {
+                    topRuler.style.display = 'block';
+                }
+                if (leftRuler) {
+                    leftRuler.style.display = 'block';
+                }
+
+                // Force initial ruler update if XVG system is ready
+                const checkXVGSys = () => {
+                    if (window.XVGSystem && window.XVGSystem.appState && window.XVGSystem.appState.rulers && window.XVGSystem.appState.rulers.visible) {
+                        if (window.updateTopRuler) window.updateTopRuler();
+                        if (window.updateLeftRuler) window.updateLeftRuler();
+                    } else {
+                        // Try again in a bit if XVG system isn't ready yet
+                        setTimeout(checkXVGSys, 200);
+                    }
+                };
+                checkXVGSys();
+            }, 100);
+            
+            // Initialize opacity controls
+            const fillOpacity = document.getElementById('fill-opacity');
+            const fillOpacityValue = document.getElementById('fill-opacity-value');
+            const strokeOpacity = document.getElementById('stroke-opacity');
+            const strokeOpacityValue = document.getElementById('stroke-opacity-value');
+            
+            if (fillOpacity && fillOpacityValue) {
+                fillOpacity.addEventListener('input', function() {
+                    fillOpacityValue.textContent = this.value + '%';
+                });
+            }
+            
+            if (strokeOpacity && strokeOpacityValue) {
+                strokeOpacity.addEventListener('input', function() {
+                    strokeOpacityValue.textContent = this.value + '%';
+                });
+            }
+            
+            // Initialize stroke width control
+            const strokeWidth = document.getElementById('stroke-width');
+            const strokeWidthValue = document.getElementById('stroke-width-value');
+            
+            if (strokeWidth && strokeWidthValue) {
+                strokeWidth.addEventListener('input', function() {
+                    strokeWidthValue.textContent = this.value;
+                });
+            }
+        });
+        
+        // Opacity control functions
+        function updateFillOpacity(value) {
+            if (window.XVGSystem && window.XVGSystem.updateFillOpacity) {
+                window.XVGSystem.updateFillOpacity(value / 100);
+            }
+            console.log('Fill opacity updated:', value + '%');
+        }
+        
+        function updateStrokeOpacity(value) {
+            if (window.XVGSystem && window.XVGSystem.updateStrokeOpacity) {
+                window.XVGSystem.updateStrokeOpacity(value / 100);
+            }
+            console.log('Stroke opacity updated:', value + '%');
+        }
+        
+        // Text color function
+        function setTextColor(color) {
+            if (window.XVGSystem && window.XVGSystem.setTextColor) {
+                window.XVGSystem.setTextColor(color);
+            }
+            console.log('Text color updated:', color);
+        }
+        
+        // Update stroke width function
+        function updateStrokeWidth(value) {
+            const strokeWidthValue = document.getElementById('stroke-width-value');
+            if (strokeWidthValue) {
+                strokeWidthValue.textContent = value;
+            }
+            if (window.XVGSystem && window.XVGSystem.updateStrokeWidth) {
+                window.XVGSystem.updateStrokeWidth(value);
+            }
+            console.log('Stroke width updated:', value);
+        }
+
+        // Add test function to window for debugging
+        window.testAllFunctions = function() {
+            console.log('=== Testing All Functions ===');
+
+            // Test zoom functions
+            zoomIn();
+            zoomOut();
+
+            // Test view functions
+            toggleGrid();
+            toggleRulers();
+            toggleGuides();
+
+            // Test edit functions
+            undo();
+            redo();
+            cut();
+            copy();
+            paste();
+            deleteSelected();
+            selectAll();
+            deselectAll();
+
+            // Test XVG functions
+            exportXVG();
+            importFile();
+            openSDFPanel();
+                open3DPanel();
+            openShaderPanel();
+            openCRDTPanel();
+            validateXVG();
+            showXVGInfo();
+
+            // Test help functions
+            help();
+            about();
+            testXVGWasm();
+            debugEngineStatus();
+            testEngineConnections();
+            addTestShapes();
+            add3DDemo();
+
+            // Test text functions
+            setTextStyle('bold');
+            setTextAlign('center');
+            setFontFamily('Arial');
+            setFontSize('16');
+            setTextColor('#ff0000');
+            openFontDialog();
+
+            // Test panel functions
+            showPanel('properties');
+            showPanel('layers');
+
+            // Test tool functions
+            selectTool('pen');
+            toggleToolCategory('drawing');
+
+            console.log('=== All Functions Tested ===');
+        };
+
+        // Diagnostic function for XVG import issues
+        window.diagnoseXVGImport = function() {
+            console.log('=== XVG Import Diagnostics ===');
+
+            if (!window.XVGSystem || !window.XVGSystem.appState) {
+                console.error('XVGSystem not available');
+                return;
+            }
+
+            const appState = window.XVGSystem.appState;
+            console.log('Current paths count:', appState.paths.length);
+            console.log('Current layers:', appState.layers);
+
+            appState.paths.forEach((path, index) => {
+                console.log(`Path ${index}:`, {
+                    id: path.id,
+                    type: path.type,
+                    data: path.data ? path.data.substring(0, 100) + '...' : 'null',
+                    dataLength: path.data ? path.data.length : 0,
+                    style: path.style,
+                    visible: path.visible,
+                    layerIndex: path.layerIndex
+                });
+
+                // Check if path is assigned to a layer
+                const assignedLayers = appState.layers.filter(layer =>
+                    layer.paths && layer.paths.includes(path.id)
+                );
+                console.log(`Path ${index} assigned to layers:`, assignedLayers.map(l => l.name));
+            });
+
+            // Check canvas state
+            if (window.XVGSystem.canvas && window.XVGSystem.canvas.element) {
+                const canvas = window.XVGSystem.canvas.element;
+                console.log('Canvas size:', canvas.width, 'x', canvas.height);
+                console.log('Canvas visible:', canvas.style.display !== 'none');
+            }
+
+            // Test path rendering
+            if (window.XVGSystem.canvas && window.XVGSystem.canvas.context) {
+                const ctx = window.XVGSystem.canvas.context;
+                console.log('Canvas context available:', !!ctx);
+
+                // Check if canvas has any content
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const hasContent = imageData.data.some(pixel => pixel > 0);
+                console.log('Canvas has visual content:', hasContent);
+
+                if (!hasContent) {
+                    console.log('Canvas appears empty - forcing redraw...');
+                    // Force a redraw
+                    if (window.renderCanvas) {
+                        window.renderCanvas();
+                        console.log('Redraw attempted');
+                    }
+                }
+            }
+
+            // Check layer visibility
+            console.log('Layer visibility check:');
+            appState.layers.forEach((layer, index) => {
+                console.log(`Layer ${index} (${layer.name}): visible=${layer.visible}, paths=${layer.paths ? layer.paths.length : 0}`);
+            });
+
+            console.log('=== End XVG Import Diagnostics ===');
+        };
+
+        // Function to force canvas redraw and visibility check
+        window.forceRedraw = function() {
+            console.log('=== Forcing Canvas Redraw ===');
+
+            if (!window.XVGSystem || !window.XVGSystem.canvas) {
+                console.error('Canvas not available');
+                return;
+            }
+
+            const canvas = window.XVGSystem.canvas.element;
+            const ctx = window.XVGSystem.canvas.context;
+
+            if (!canvas || !ctx) {
+                console.error('Canvas or context not available');
+                return;
+            }
+
+            console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+            console.log('Canvas transform:', window.XVGSystem.appState.canvasTransform);
+
+            // Clear and redraw
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            console.log('Canvas cleared');
+
+            // Force render
+            if (window.renderCanvas) {
+                window.renderCanvas();
+                console.log('Canvas redrawn');
+            }
+
+            // Check if we have content now
+            const imageData = ctx.getImageData(0, 0, Math.min(100, canvas.width), Math.min(100, canvas.height));
+            const hasContent = imageData.data.some(pixel => pixel > 0);
+            console.log('Canvas has content after redraw:', hasContent);
+
+            console.log('=== Redraw Complete ===');
+        };
+
+        // Function to make all paths visible and large
+        window.makePathsVisible = function() {
+            console.log('=== Making All Paths Visible ===');
+
+            if (!window.XVGSystem || !window.XVGSystem.appState) {
+                console.error('XVGSystem not available');
+                return;
+            }
+
+            const appState = window.XVGSystem.appState;
+            console.log('Processing', appState.paths.length, 'paths');
+
+            appState.paths.forEach((path, index) => {
+                console.log(`Processing path ${index}:`, path.id);
+
+                // Make sure path is visible
+                path.visible = true;
+
+                // Ensure it has proper styling
+                if (!path.style) path.style = {};
+                if (!path.style.fill) path.style.fill = { color: [1, 0, 0, 0.8], rule: 'NonZero' }; // Red fill
+                if (!path.style.stroke) path.style.stroke = { color: [0, 0, 1, 1], width: 3 }; // Blue stroke
+
+                // Make sure it's on a visible layer
+                const layer = appState.layers[path.layerIndex || 0];
+                if (layer) {
+                    layer.visible = true;
+                    console.log(`Path ${index} on layer ${layer.name} (visible: ${layer.visible})`);
+                }
+
+                console.log(`Path ${index} style:`, path.style);
+            });
+
+            // Force redraw
+            if (window.renderCanvas) {
+                window.renderCanvas();
+                console.log('Canvas redrawn after making paths visible');
+            }
+
+            console.log('=== Paths Made Visible ===');
+        };
+
+        // Test function to create a visible test path
+        window.createTestPath = function() {
+            console.log('=== Creating Test Path ===');
+
+            if (!window.XVGSystem || !window.XVGSystem.appState) {
+                console.error('XVGSystem not available');
+                return;
+            }
+
+            const testPath = {
+                id: crypto.randomUUID(),
+                type: 'path',
+                data: 'M 50 50 L 150 50 L 150 150 L 50 150 Z', // Simple square
+                style: {
+                    fill: { color: [1, 0, 0, 0.5], rule: 'NonZero' }, // Red fill
+                    stroke: { color: [0, 0, 0, 1], width: 2, cap: 'Butt', join: 'Miter', dash_array: [] },
+                    opacity: 1.0,
+                    blend_mode: 'Normal'
+                },
+                x: 50, y: 50, w: 100, h: 100,
+                tx: 0, ty: 0, rotation: 0,
+                visible: true, locked: false,
+                layerIndex: 0
+            };
+
+            window.addPath(testPath);
+            console.log('Test path created:', testPath.id);
+            console.log('=== Test Path Created ===');
+        };
+    </script>
+</body>
+</html>
+

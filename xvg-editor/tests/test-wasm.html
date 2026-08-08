@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XVG WASM Test</title>
+</head>
+<body>
+    <h1>XVG WASM Module Test</h1>
+    <div id="output"></div>
+    
+    <script type="module">
+        const output = document.getElementById('output');
+        
+        async function testWASM() {
+            try {
+                output.innerHTML += '<p>🔄 Testing WASM module loading...</p>';
+                
+                // Try to load the WASM module
+                const wasmModule = await import('./pkg/xvg_wasm.js');
+                output.innerHTML += '<p>✅ WASM module imported successfully</p>';
+                output.innerHTML += '<p>📦 Module exports: ' + Object.keys(wasmModule).join(', ') + '</p>';
+                
+                // Check if it has default export
+                if (wasmModule.default) {
+                    output.innerHTML += '<p>✅ Default export found</p>';
+                    
+                    // Try to initialize
+                    try {
+                        const wasmInstance = await wasmModule.default();
+                        output.innerHTML += '<p>✅ WASM initialized successfully</p>';
+                        output.innerHTML += '<p>📦 Instance exports: ' + Object.keys(wasmInstance).join(', ') + '</p>';
+                        
+                        // Check for XVGFile class
+                        if (wasmInstance.XVGFile) {
+                            output.innerHTML += '<p>✅ XVGFile class found</p>';
+                            
+                            // Try to create an instance
+                            try {
+                                const xvgFile = new wasmInstance.XVGFile(800, 600);
+                                output.innerHTML += '<p>✅ XVGFile instance created</p>';
+                                
+                                // Check methods
+                                if (typeof xvgFile.add_path === 'function') {
+                                    output.innerHTML += '<p>✅ add_path method available</p>';
+                                }
+                                if (typeof xvgFile.encode_bytes === 'function') {
+                                    output.innerHTML += '<p>✅ encode_bytes method available</p>';
+                                }
+                                
+                                // Clean up
+                                xvgFile.free();
+                                output.innerHTML += '<p>✅ XVGFile freed</p>';
+                            } catch (error) {
+                                output.innerHTML += '<p>❌ Failed to create XVGFile: ' + error.message + '</p>';
+                            }
+                        } else {
+                            output.innerHTML += '<p>❌ XVGFile class not found</p>';
+                        }
+                        
+                    } catch (error) {
+                        output.innerHTML += '<p>❌ Failed to initialize WASM: ' + error.message + '</p>';
+                    }
+                } else {
+                    output.innerHTML += '<p>❌ No default export found</p>';
+                }
+                
+                // Check for __wbg_init
+                if (wasmModule.__wbg_init) {
+                    output.innerHTML += '<p>✅ __wbg_init function found</p>';
+                } else {
+                    output.innerHTML += '<p>❌ __wbg_init function not found</p>';
+                }
+                
+            } catch (error) {
+                output.innerHTML += '<p>❌ Failed to load WASM module: ' + error.message + '</p>';
+            }
+        }
+        
+        testWASM();
+    </script>
+</body>
+</html>
